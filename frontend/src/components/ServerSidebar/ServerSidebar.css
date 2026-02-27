@@ -1,0 +1,247 @@
+/* Just - Styles de la barre latérale des serveurs */
+
+.server-sidebar {
+  width: 72px;
+  min-width: 72px;
+  background: #1a1a2e;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 4px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.server-sidebar::-webkit-scrollbar {
+  display: none;
+}
+
+.server-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 52px;
+}
+
+.server-pill {
+  position: absolute;
+  left: 0;
+  width: 4px;
+  height: 8px;
+  border-radius: 0 4px 4px 0;
+  background: white;
+  transition: height 0.2s;
+}
+
+.server-pill.active {
+  height: 36px;
+}
+
+.server-icon-wrapper:hover .server-pill:not(.active) {
+  height: 20px;
+}
+
+.server-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 700;
+  font-size: 18px;
+  color: white;
+  overflow: hidden;
+}
+
+.server-icon:hover,
+.server-icon.active {
+  border-radius: 16px;
+}
+
+.server-icon span {
+  user-select: none;
+}
+
+.home-icon {
+  background: linear-gradient(135deg, #5865f2, #57f287) !important;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.add-icon {
+  background: #2b2d42;
+  color: #57f287;
+}
+
+.add-icon:hover {
+  background: #57f287;
+  color: white;
+}
+
+.join-icon {
+  background: #2b2d42;
+  color: #5865f2;
+}
+
+.join-icon:hover {
+  background: #5865f2;
+  color: white;
+}
+
+.logout-icon {
+  background: #2b2d42;
+  color: #ed4245;
+}
+
+.logout-icon:hover {
+  background: #ed4245;
+  color: white;
+}
+
+.server-separator {
+  width: 32px;
+  height: 2px;
+  background: #2b2d42;
+  border-radius: 1px;
+  margin: 4px 0;
+}
+
+.server-sidebar-spacer {
+  flex: 1;
+}
+
+.server-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ===== Modal ===== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fade-in 0.15s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal {
+  background: #2b2d42;
+  border-radius: 16px;
+  padding: 32px;
+  width: 420px;
+  max-width: 90vw;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: modal-in 0.2s ease;
+}
+
+@keyframes modal-in {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal h3 {
+  color: white;
+  margin: 0 0 8px;
+  font-size: 22px;
+  text-align: center;
+}
+
+.modal-subtitle {
+  color: #a0a0b0;
+  font-size: 14px;
+  text-align: center;
+  margin: 0 0 20px;
+}
+
+.modal-error {
+  background: rgba(237, 66, 69, 0.15);
+  border: 1px solid rgba(237, 66, 69, 0.3);
+  color: #ed4245;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.modal .form-group {
+  margin-bottom: 20px;
+}
+
+.modal .form-group label {
+  display: block;
+  color: #b0b0c0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.modal .form-group input {
+  width: 100%;
+  padding: 12px 14px;
+  background: #1a1a2e;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: white;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.modal .form-group input:focus {
+  border-color: #5865f2;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn-cancel {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  color: #a0a0b0;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.btn-cancel:hover {
+  text-decoration: underline;
+}
+
+.btn-confirm {
+  padding: 10px 24px;
+  background: #5865f2;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-confirm:hover {
+  background: #4752c4;
+}

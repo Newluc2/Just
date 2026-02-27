@@ -1,0 +1,74 @@
+# ============================================
+# Just - Docker Compose
+# Backend sur :5001 / Frontend sur :5173
+# Option public sans redirection de port via profile "public"
+# ============================================
+
+services:
+  # ---- Backend : Express + Socket.io ----
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: just-backend
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - JWT_SECRET=${JWT_SECRET:-just_super_secret_key_change_me_in_production}
+      - CLIENT_URL=${CLIENT_URL:-http://localhost:5173}
+    volumes:
+      - just-data:/app/data
+      - just-uploads:/app/uploads
+    networks:
+      - just-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5001/api/health').then(r=>{if(!r.ok)throw 1})"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---- Frontend : React servi par Nginx ----
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-/api}
+        - VITE_SOCKET_URL=${VITE_SOCKET_URL:-}
+    container_name: just-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - just-network
+
+  # ---- Exposition publique via Cloudflare Tunnel (optionnel) ----
+  # Activer avec: docker compose --profile public up -d
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: just-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      frontend:
+        condition: service_started
+    networks:
+      - just-network
+    profiles:
+      - public
+
+volumes:
+  just-data:
+    driver: local
+  just-uploads:
+    driver: local
+
+networks:
+  just-network:
+    driver: bridge

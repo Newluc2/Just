@@ -1,0 +1,241 @@
+.server-settings-modal {
+  width: 900px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 40px);
+  background: #1f1f2e;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.server-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.server-settings-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: white;
+}
+
+.server-settings-close {
+  background: none;
+  border: none;
+  color: #a0a0b0;
+  cursor: pointer;
+}
+
+.server-settings-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 520px;
+}
+
+.server-settings-tabs {
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.server-settings-tabs button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #a0a0b0;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.server-settings-tabs button.active,
+.server-settings-tabs button:hover {
+  background: rgba(88, 101, 242, 0.18);
+  color: #c7ceff;
+}
+
+.server-settings-content {
+  padding: 16px;
+  overflow: auto;
+}
+
+.settings-section label {
+  display: block;
+  color: #d0d0e0;
+  font-size: 13px;
+  margin-bottom: 6px;
+  margin-top: 10px;
+}
+
+.settings-section input,
+.settings-section select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: #11121b;
+  color: white;
+  box-sizing: border-box;
+}
+
+.settings-section .btn-primary {
+  margin-top: 12px;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: #5865f2;
+  color: white;
+  cursor: pointer;
+}
+
+.invite-generator {
+  margin-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 14px;
+}
+
+.invite-generator h3 {
+  margin: 0 0 10px;
+  color: white;
+}
+
+.invite-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+}
+
+.invite-url-box {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.invite-url-box button {
+  border: none;
+  border-radius: 8px;
+  background: #2f3348;
+  color: #d6daff;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.role-create-row {
+  display: grid;
+  grid-template-columns: 1fr 72px auto;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.role-create-row .btn-primary {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.roles-list,
+.members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.role-item,
+.member-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #161823;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.role-left,
+.member-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.role-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.role-actions,
+.member-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.role-actions input[type='color'] {
+  width: 40px;
+  height: 32px;
+  padding: 0;
+}
+
+.member-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #5865f2;
+  display: grid;
+  place-items: center;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.member-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.member-meta strong {
+  color: white;
+  font-size: 13px;
+}
+
+.member-meta span {
+  font-size: 12px;
+}
+
+.danger {
+  border: none;
+  border-radius: 8px;
+  background: rgba(237, 66, 69, 0.16);
+  color: #ff8f92;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.settings-error,
+.settings-success {
+  margin-bottom: 10px;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 13px;
+}
+
+.settings-error {
+  background: rgba(237, 66, 69, 0.15);
+  color: #ff9b9d;
+}
+
+.settings-success {
+  background: rgba(87, 242, 135, 0.15);
+  color: #9ff5bc;
+}

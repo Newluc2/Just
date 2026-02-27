@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Just Backend",
+			"type": "shell",
+			"command": "cd /home/luc/JustP/just/backend && node src/index.js",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}

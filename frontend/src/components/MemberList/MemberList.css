@@ -1,0 +1,99 @@
+/* Just - Styles du panneau des membres */
+
+.member-list {
+  width: 240px;
+  min-width: 240px;
+  background: #22223b;
+  padding: 12px 8px;
+  overflow-y: auto;
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+  scrollbar-width: thin;
+  scrollbar-color: #2b2d42 transparent;
+}
+
+.member-category {
+  color: #70708a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 16px 8px 6px;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.member-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.member-avatar-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.member-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.member-status-dot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #22223b;
+}
+
+.member-status-dot.online {
+  background: #57f287;
+}
+
+.member-status-dot.offline {
+  background: #70708a;
+}
+
+.member-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.member-name {
+  color: #d0d0e0;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.member-name.offline {
+  color: #70708a;
+}
+
+.member-badge {
+  font-size: 10px;
+  flex-shrink: 0;
+  color: white;
+  border-radius: 10px;
+  padding: 2px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
