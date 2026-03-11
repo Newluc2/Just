@@ -323,15 +323,20 @@ const useStore = create((set, get) => ({
   messages: [],
 
   /**
-   * Envoyer un message via Socket.io
+   * Envoyer un message via Socket.io (avec pièces jointes et reply)
    */
-  sendMessage: (content) => {
+  sendMessage: (content, options = {}) => {
     const channelId = get().currentChannel?.id;
-    if (!channelId || !content.trim()) return;
+    if (!channelId || (!content.trim() && !options.attachments?.length)) return;
 
     const socket = getSocket();
     if (socket) {
-      socket.emit('message:send', { channelId, content });
+      socket.emit('message:send', {
+        channelId,
+        content,
+        replyTo: options.replyTo || null,
+        attachments: options.attachments || [],
+      });
     }
   },
 
@@ -339,9 +344,68 @@ const useStore = create((set, get) => ({
    * Ajouter un message reçu via Socket.io
    */
   addMessage: (message) => {
+    set((state) => {
+      if (state.messages.some((m) => m.id === message.id)) return state;
+      return { messages: [...state.messages, message] };
+    });
+  },
+
+  /** Mettre à jour un message édité */
+  updateMessage: (messageId, updates) => {
     set((state) => ({
-      messages: [...state.messages, message],
+      messages: state.messages.map((m) => m.id === messageId ? { ...m, ...updates } : m),
     }));
+  },
+
+  /** Supprimer un message */
+  removeMessage: (messageId) => {
+    set((state) => ({
+      messages: state.messages.filter((m) => m.id !== messageId),
+    }));
+  },
+
+  /** Mettre à jour les réactions d'un message */
+  updateMessageReactions: (messageId, reactions) => {
+    set((state) => ({
+      messages: state.messages.map((m) => m.id === messageId ? { ...m, reactions } : m),
+    }));
+  },
+
+  /** Éditer un message (via socket) */
+  editMessage: (messageId, content) => {
+    const socket = getSocket();
+    if (socket) socket.emit('message:edit', { messageId, content });
+  },
+
+  /** Supprimer un message (via socket) */
+  deleteMessage: (messageId) => {
+    const socket = getSocket();
+    if (socket) socket.emit('message:delete', { messageId });
+  },
+
+  /** Réagir à un message */
+  reactToMessage: (messageId, emoji) => {
+    const socket = getSocket();
+    if (socket) socket.emit('message:react', { messageId, emoji });
+  },
+
+  /** Upload d'un fichier */
+  uploadFile: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/messages/upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${get().token}` },
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Upload échoué');
+    return response.json();
+  },
+
+  /** Récupérer les messages épinglés */
+  fetchPinnedMessages: async (channelId) => {
+    const data = await apiFetch(`/messages/pinned/${channelId}`);
+    return data.pins || [];
   },
 
   // ===== MEMBRES =====
@@ -375,6 +439,15 @@ const useStore = create((set, get) => ({
         return { typingUsers: state.typingUsers.filter((t) => t.userId !== userId) };
       }
     });
+  },
+
+  // ===== THÈME =====
+  theme: localStorage.getItem('just_theme') || 'bleu-violet',
+
+  setTheme: (theme) => {
+    localStorage.setItem('just_theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
+    set({ theme });
   },
 
   // ===== VIEW MODE =====
@@ -477,9 +550,9 @@ const useStore = create((set, get) => ({
   /**
    * Envoyer un message DM
    */
-  sendDM: (content) => {
+  sendDM: (content, options = {}) => {
     const dm = get().currentDM;
-    if (!dm || !content.trim()) return;
+    if (!dm || (!content.trim() && !options.attachments?.length)) return;
 
     const socket = getSocket();
     if (socket) {
@@ -487,6 +560,8 @@ const useStore = create((set, get) => ({
         conversationId: dm.id,
         recipientId: dm.other_user_id,
         content,
+        replyTo: options.replyTo || null,
+        attachments: options.attachments || [],
       });
     }
   },

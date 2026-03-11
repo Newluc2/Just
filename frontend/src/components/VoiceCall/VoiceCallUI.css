@@ -1,0 +1,129 @@
+/* ═══════════════════════════════════════════════════════════════
+   Just – VoiceCallUI
+   Bannière d'appel (entrant / sortant / connecté) fixée en bas.
+   ═══════════════════════════════════════════════════════════════ */
+
+.voice-call-ui {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none; /* laisse passer les clics sauf sur la bannière */
+}
+
+/* ── Bannière principale ────────────────────────────────────── */
+.call-banner {
+  pointer-events: all;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px;
+  border-radius: 16px;
+  min-width: 320px;
+  max-width: 460px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+  backdrop-filter: blur(12px);
+  animation: callSlideIn 0.25s ease;
+}
+
+@keyframes callSlideIn {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+.call-banner.incoming  { background: #23272a; border: 1.5px solid #57f287; }
+.call-banner.outgoing  { background: #23272a; border: 1.5px solid #5865f2; }
+.call-banner.connected { background: #23272a; border: 1.5px solid #57f287; }
+
+/* ── Infos appelant ─────────────────────────────────────────── */
+.call-banner-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.call-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #5865f2;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.call-avatar.ringing {
+  animation: callPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes callPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(88,101,242,0.5); }
+  50%      { box-shadow: 0 0 0 10px rgba(88,101,242,0); }
+}
+
+.call-banner-info > div {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.call-peer-name {
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.call-status-text {
+  color: #b9bbbe;
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
+.call-duration {
+  color: #57f287;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Boutons d'action ───────────────────────────────────────── */
+.call-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.call-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s, filter 0.15s;
+  color: #fff;
+}
+
+.call-btn:hover  { transform: scale(1.1); filter: brightness(1.15); }
+.call-btn:active { transform: scale(0.95); }
+
+.call-btn.accept { background: #57f287; color: #000; }
+.call-btn.reject { background: #ed4245; }
+.call-btn.mute   { background: #4f545c; }
+.call-btn.mute.active { background: #ed4245; }

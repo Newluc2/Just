@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd /home/luc/JustP/just/backend && node -e \"\nconst initSqlJs = require\\('sql\\.js'\\);\nconst fs = require\\('fs'\\);\nconst path = require\\('path'\\);\n\nasync function test\\(\\) \\{\n  const SQL = await initSqlJs\\(\\);\n  const db = new SQL\\.Database\\(\\);\n  db\\.run\\('CREATE TABLE test \\(id TEXT PRIMARY KEY, val INTEGER DEFAULT 0\\)'\\);\n  db\\.run\\('INSERT INTO test \\(id\\) VALUES \\(\\?\\)', \\['abc'\\]\\);\n  \n  // Check before update\n  let stmt = db\\.prepare\\('SELECT \\* FROM test WHERE id = \\?'\\);\n  stmt\\.bind\\(\\['abc'\\]\\);\n  stmt\\.step\\(\\);\n  console\\.log\\('Before update:', stmt\\.getAsObject\\(\\)\\);\n  stmt\\.free\\(\\);\n  \n  // Update\n  db\\.run\\('UPDATE test SET val = 1 WHERE id = \\?', \\['abc'\\]\\);\n  \n  // Check after update\n  stmt = db\\.prepare\\('SELECT \\* FROM test WHERE id = \\?'\\);\n  stmt\\.bind\\(\\['abc'\\]\\);\n  stmt\\.step\\(\\);\n  console\\.log\\('After update:', stmt\\.getAsObject\\(\\)\\);\n  stmt\\.free\\(\\);\n\\}\ntest\\(\\)\\.catch\\(console\\.error\\);\n\" 2>&1 \\| head -20\n$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

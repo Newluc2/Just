@@ -18,6 +18,7 @@ const channelRoutes = require('./routes/channels');
 const messageRoutes = require('./routes/messages');
 const dmRoutes = require('./routes/dm');
 const inviteRoutes = require('./routes/invites');
+const userRoutes = require('./routes/users');
 
 // Import de la base de données et du handler Socket.io
 const db = require('./database/db');
@@ -77,6 +78,7 @@ app.use('/api/channels', channelRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/dm', dmRoutes);
 app.use('/api/invites', inviteRoutes);
+app.use('/api/users', userRoutes);
 
 // Route de santé
 app.get('/api/health', (req, res) => {

@@ -16,6 +16,12 @@ import MemberList from './components/MemberList/MemberList';
 import DMSidebar from './components/DMSidebar/DMSidebar';
 import DMChatArea from './components/DMChatArea/DMChatArea';
 import UserProfilePopover from './components/UserProfilePopover/UserProfilePopover';
+import VoiceCallUI from './components/VoiceCall/VoiceCallUI';
+import {
+  requestPermission,
+  notifyNewMessage,
+  notifyDM,
+} from './api/notifications';
 import './App.css';
 
 export default function App() {
@@ -24,8 +30,14 @@ export default function App() {
     addMessage, setMembers, setMemberOnline, setTypingUser,
     currentServer, activeView, addDMMessage, setDMTypingUser,
     profilePopover, hideProfilePopover, openDMWithUser, joinServerByInviteLink,
+    theme, updateMessage, removeMessage, updateMessageReactions,
   } = useStore();
   const [loading, setLoading] = useState(true);
+
+  // Appliquer le thème au démarrage
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   const extractInviteCodeFromPath = () => {
     const match = window.location.pathname.match(/^\/([A-Za-z0-9]{8,32})\/?$/);
@@ -73,6 +85,8 @@ export default function App() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchServers();
+      // Demander la permission pour les notifications navigateur
+      requestPermission();
     }
   }, [isAuthenticated]);
 
@@ -88,6 +102,29 @@ export default function App() {
         // Nouveau message reçu
         socket.on('message:new', (message) => {
           addMessage(message);
+          // Notification si page en arrière-plan
+          const state = useStore.getState();
+          if (message.author_id !== state.user?.id) {
+            const channelName = state.currentChannel?.name || 'salon';
+            notifyNewMessage(
+              message.author_username,
+              channelName,
+              message.content,
+            );
+          }
+        });
+
+        // Mention @username
+        socket.on('mention:new', ({ channelId, message, mentionedBy }) => {
+          const state = useStore.getState();
+          // Ajouter le message s'il n'est pas déjà là
+          addMessage(message);
+          // Toujours notifier pour une mention
+          notifyNewMessage(
+            `${mentionedBy} vous a mentionné`,
+            state.currentChannel?.name || 'salon',
+            message.content,
+          );
         });
 
         // Mise à jour de la liste des membres
@@ -124,12 +161,61 @@ export default function App() {
         });
 
         socket.on('dm:notification', ({ conversationId, message }) => {
-          // Aussi ajouter au DM courant si c'est le bon
           addDMMessage(conversationId, message);
+          // Notification navigateur pour les DM reçus
+          const state = useStore.getState();
+          if (message.author_id !== state.user?.id) {
+            notifyDM(message.author_username, message.content);
+          }
         });
 
         socket.on('dm:typing:update', ({ userId, username, conversationId, isTyping }) => {
           setDMTypingUser(userId, username, isTyping);
+        });
+
+        // === DM edit/delete/reaction events ===
+        socket.on('dm:edited', ({ messageId, content, edited_at, conversationId }) => {
+          const state = useStore.getState();
+          if (state.currentDM?.id === conversationId) {
+            useStore.setState({
+              dmMessages: state.dmMessages.map((m) =>
+                m.id === messageId ? { ...m, content, edited_at } : m
+              ),
+            });
+          }
+        });
+
+        socket.on('dm:deleted', ({ messageId, conversationId }) => {
+          const state = useStore.getState();
+          if (state.currentDM?.id === conversationId) {
+            useStore.setState({
+              dmMessages: state.dmMessages.filter((m) => m.id !== messageId),
+            });
+          }
+        });
+
+        socket.on('dm:reactions', ({ messageId, reactions, conversationId }) => {
+          const state = useStore.getState();
+          if (state.currentDM?.id === conversationId) {
+            useStore.setState({
+              dmMessages: state.dmMessages.map((m) =>
+                m.id === messageId ? { ...m, reactions } : m
+              ),
+            });
+          }
+        });
+
+        // === Message edit/delete/reaction events ===
+        socket.on('message:edited', ({ messageId, content, edited_at }) => {
+          updateMessage(messageId, { content, edited_at });
+        });
+
+        socket.on('message:deleted', ({ messageId }) => {
+          removeMessage(messageId);
+        });
+
+        socket.on('message:reactions', ({ messageId, reactions }) => {
+          updateMessageReactions(messageId, reactions);
         });
       }
     }, 100);
@@ -139,6 +225,7 @@ export default function App() {
       const socket = getSocket();
       if (socket) {
         socket.off('message:new');
+        socket.off('mention:new');
         socket.off('server:members');
         socket.off('user:online');
         socket.off('user:offline');
@@ -147,6 +234,12 @@ export default function App() {
         socket.off('dm:new');
         socket.off('dm:notification');
         socket.off('dm:typing:update');
+        socket.off('dm:edited');
+        socket.off('dm:deleted');
+        socket.off('dm:reactions');
+        socket.off('message:edited');
+        socket.off('message:deleted');
+        socket.off('message:reactions');
       }
     };
   }, [isAuthenticated]);
@@ -195,6 +288,9 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Bannière d'appel vocal (appel entrant / sortant / connecté) */}
+      <VoiceCallUI currentUserId={useStore.getState().user?.id} />
     </div>
   );
 }

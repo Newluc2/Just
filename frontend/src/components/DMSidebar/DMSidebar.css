@@ -1,0 +1,237 @@
+/* ═══════════════════════════════════════════════════════════
+   Just – DMSidebar
+   ═══════════════════════════════════════════════════════════ */
+
+.dm-sidebar {
+  width: 240px;
+  min-width: 200px;
+  background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+.dm-sidebar-header {
+  padding: 16px 12px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dm-sidebar-title {
+  color: #8e9297;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.dm-new-btn {
+  background: none;
+  border: none;
+  color: #8e9297;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.dm-new-btn:hover {
+  color: #dcddde;
+  background: rgba(255,255,255,0.07);
+}
+
+/* ── Barre de recherche ───────────────────────────────────── */
+.dm-search-bar {
+  margin: 4px 8px 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-input);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.dm-search-icon {
+  color: #8e9297;
+  flex-shrink: 0;
+}
+
+.dm-search-bar input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  outline: none;
+}
+
+.dm-search-bar input::placeholder {
+  color: var(--text-muted);
+}
+
+.dm-search-clear {
+  background: none;
+  border: none;
+  color: #8e9297;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 1px;
+}
+
+.dm-search-clear:hover { color: #dcddde; }
+
+/* ── Résultats ────────────────────────────────────────────── */
+.dm-search-results {
+  margin: 0 4px 4px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-input);
+}
+
+.dm-search-hint {
+  padding: 8px 12px;
+  color: #8e9297;
+  font-size: 12px;
+  margin: 0;
+}
+
+.dm-search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 14px;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.dm-search-result-item:hover {
+  background: var(--hover-bg);
+}
+
+/* ── Liste ────────────────────────────────────────────────── */
+.dm-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 4px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.08) transparent;
+}
+
+.dm-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 32px 16px;
+  color: #8e9297;
+  text-align: center;
+}
+
+.dm-empty p {
+  font-size: 14px;
+  font-weight: 600;
+  color: #72767d;
+  margin: 0;
+}
+
+.dm-empty span {
+  font-size: 12px;
+  color: #72767d;
+}
+
+/* ── Item de conversation ─────────────────────────────────── */
+.dm-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 8px 8px;
+  cursor: pointer;
+  border-radius: 6px;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.dm-item:hover { background: rgba(255,255,255,0.06); }
+.dm-item.active { background: rgba(88,101,242,0.15); }
+
+.dm-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.dm-status-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-secondary);
+}
+
+.dm-status-dot.online  { background: #57f287; }
+.dm-status-dot.offline { background: #72767d; }
+
+.dm-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dm-item-name {
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dm-item.active .dm-item-name { color: var(--text-primary); }
+
+.dm-item-preview {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.dm-unread-badge {
+  background: #ed4245;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 1px 6px;
+  min-width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}

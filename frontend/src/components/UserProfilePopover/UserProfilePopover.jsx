@@ -80,6 +80,8 @@ export default function UserProfilePopover({ member, position, onClose, onStartD
             {isOnline ? 'En ligne' : 'Hors ligne'}
           </span>
 
+          <div className="popover-divider" />
+
           {member.about && (
             <div className="popover-section">
               <h4>À PROPOS DE MOI</h4>

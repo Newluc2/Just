@@ -3,6 +3,92 @@
 /* Import de la police Inter */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
+/* ═══════════════════════════════════════════════════════════
+   THÈMES – CSS Custom Properties
+   ═══════════════════════════════════════════════════════════ */
+
+/* Bleu Violet (défaut) */
+[data-theme="bleu-violet"], :root {
+  --bg-primary:    #1a1a2e;
+  --bg-secondary:  #22223b;
+  --bg-tertiary:   #2b2d42;
+  --bg-input:      #1a1a2e;
+  --text-primary:  #ffffff;
+  --text-secondary:#dcddde;
+  --text-muted:    #8e9297;
+  --text-faint:    #70708a;
+  --accent:        #5865f2;
+  --accent-hover:  #4752c4;
+  --accent-green:  #57f287;
+  --border:        rgba(255,255,255,0.06);
+  --hover-bg:      rgba(255,255,255,0.04);
+  --message-hover: rgba(255,255,255,0.02);
+  --scrollbar:     rgba(255,255,255,0.1);
+  --danger:        #ed4245;
+}
+
+/* Noir Sombre */
+[data-theme="noir-sombre"] {
+  --bg-primary:    #0a0a0a;
+  --bg-secondary:  #111111;
+  --bg-tertiary:   #1a1a1a;
+  --bg-input:      #0a0a0a;
+  --text-primary:  #e0e0e0;
+  --text-secondary:#b0b0b0;
+  --text-muted:    #707070;
+  --text-faint:    #505050;
+  --accent:        #5865f2;
+  --accent-hover:  #4752c4;
+  --accent-green:  #57f287;
+  --border:        rgba(255,255,255,0.05);
+  --hover-bg:      rgba(255,255,255,0.03);
+  --message-hover: rgba(255,255,255,0.015);
+  --scrollbar:     rgba(255,255,255,0.08);
+  --danger:        #ed4245;
+}
+
+/* Noir Clair */
+[data-theme="noir-clair"] {
+  --bg-primary:    #1e1e1e;
+  --bg-secondary:  #252525;
+  --bg-tertiary:   #2d2d2d;
+  --bg-input:      #1e1e1e;
+  --text-primary:  #f0f0f0;
+  --text-secondary:#d0d0d0;
+  --text-muted:    #909090;
+  --text-faint:    #666666;
+  --accent:        #5865f2;
+  --accent-hover:  #4752c4;
+  --accent-green:  #57f287;
+  --border:        rgba(255,255,255,0.07);
+  --hover-bg:      rgba(255,255,255,0.05);
+  --message-hover: rgba(255,255,255,0.025);
+  --scrollbar:     rgba(255,255,255,0.1);
+  --danger:        #ed4245;
+}
+
+/* Blanc */
+[data-theme="blanc"] {
+  --bg-primary:    #f2f3f5;
+  --bg-secondary:  #e3e5e8;
+  --bg-tertiary:   #ffffff;
+  --bg-input:      #ebedef;
+  --text-primary:  #060607;
+  --text-secondary:#2e3338;
+  --text-muted:    #747f8d;
+  --text-faint:    #96a0a8;
+  --accent:        #5865f2;
+  --accent-hover:  #4752c4;
+  --accent-green:  #3ba55d;
+  --border:        rgba(0,0,0,0.08);
+  --hover-bg:      rgba(0,0,0,0.04);
+  --message-hover: rgba(0,0,0,0.02);
+  --scrollbar:     rgba(0,0,0,0.12);
+  --danger:        #ed4245;
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -17,88 +103,23 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #1a1a2e;
-  color: white;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 a {
-  color: #5865f2;
+  color: var(--accent);
   text-decoration: none;
 }
 
 button {
   font-family: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
 }
 
 input {
   font-family: inherit;
-}
-
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
 }

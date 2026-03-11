@@ -3,10 +3,10 @@
 .channel-sidebar {
   width: 240px;
   min-width: 240px;
-  background: #22223b;
+  background: var(--bg-secondary);
   display: flex;
   flex-direction: column;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-right: 1px solid var(--border);
 }
 
 .channel-sidebar-empty {
@@ -25,13 +25,13 @@
 }
 
 .channel-sidebar-empty h3 {
-  color: white;
+  color: var(--text-primary);
   margin: 0 0 8px;
   font-size: 18px;
 }
 
 .channel-sidebar-empty p {
-  color: #a0a0b0;
+  color: var(--text-muted);
   font-size: 14px;
   margin: 0;
   line-height: 1.4;
@@ -44,16 +44,16 @@
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--border);
   transition: background 0.15s;
 }
 
 .channel-header:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--hover-bg);
 }
 
 .channel-header h2 {
-  color: white;
+  color: var(--text-primary);
   font-size: 15px;
   font-weight: 700;
   margin: 0;
@@ -63,7 +63,7 @@
 }
 
 .chevron {
-  color: #a0a0b0;
+  color: var(--text-muted);
   transition: transform 0.2s;
   flex-shrink: 0;
 }
@@ -74,8 +74,8 @@
 
 /* Dropdown du serveur */
 .server-dropdown {
-  background: #1a1a2e;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
   padding: 8px;
   animation: slide-down 0.15s ease;
 }
@@ -112,12 +112,12 @@
 
 .invite-code {
   padding: 8px 12px;
-  color: #a0a0b0;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
 .invite-code strong {
-  color: #5865f2;
+  color: var(--accent);
   font-family: 'Courier New', monospace;
   letter-spacing: 1px;
 }
@@ -128,7 +128,7 @@
   overflow-y: auto;
   padding: 12px 8px;
   scrollbar-width: thin;
-  scrollbar-color: #2b2d42 transparent;
+  scrollbar-color: var(--scrollbar) transparent;
 }
 
 .channel-category {
@@ -140,7 +140,7 @@
 }
 
 .channel-category span {
-  color: #70708a;
+  color: var(--text-faint);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -149,7 +149,7 @@
 .channel-add-btn {
   background: none;
   border: none;
-  color: #70708a;
+  color: var(--text-faint);
   cursor: pointer;
   padding: 2px;
   display: flex;
@@ -173,7 +173,7 @@
 }
 
 .channel-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--hover-bg);
 }
 
 .channel-item.active {
@@ -181,7 +181,7 @@
 }
 
 .channel-hash {
-  color: #70708a;
+  color: var(--text-faint);
   flex-shrink: 0;
 }
 
@@ -190,7 +190,7 @@
 }
 
 .channel-name {
-  color: #a0a0b0;
+  color: var(--text-muted);
   font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
@@ -199,23 +199,23 @@
 }
 
 .channel-item.active .channel-name {
-  color: white;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
 /* Formulaire création salon */
 .channel-create-form {
   padding: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--border);
 }
 
 .channel-create-form input {
   width: 100%;
   padding: 8px 10px;
-  background: #1a1a2e;
+  background: var(--bg-input);
   border: 2px solid transparent;
   border-radius: 6px;
-  color: white;
+  color: var(--text-primary);
   font-size: 13px;
   outline: none;
   margin-bottom: 8px;
@@ -223,7 +223,7 @@
 }
 
 .channel-create-form input:focus {
-  border-color: #5865f2;
+  border-color: var(--accent);
 }
 
 .channel-create-actions {
@@ -239,11 +239,11 @@
   font-size: 12px;
   cursor: pointer;
   background: none;
-  color: #a0a0b0;
+  color: var(--text-muted);
 }
 
 .channel-create-actions .btn-primary {
-  background: #5865f2;
+  background: var(--accent);
   color: white;
   font-weight: 600;
 }
@@ -254,8 +254,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #1a1a2e;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border);
 }
 
 .user-avatar {
@@ -280,9 +280,9 @@
   right: -1px;
   width: 10px;
   height: 10px;
-  background: #57f287;
+  background: var(--accent-green);
   border-radius: 50%;
-  border: 2px solid #1a1a2e;
+  border: 2px solid var(--bg-primary);
 }
 
 .user-info {
@@ -292,7 +292,7 @@
 
 .user-name {
   display: block;
-  color: white;
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
@@ -302,14 +302,14 @@
 
 .user-status {
   display: block;
-  color: #57f287;
+  color: var(--accent-green);
   font-size: 11px;
 }
 
 .user-settings-btn {
   background: none;
   border: none;
-  color: #70708a;
+  color: var(--text-faint);
   cursor: pointer;
   padding: 4px;
   display: flex;

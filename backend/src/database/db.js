@@ -174,6 +174,64 @@ async function initialize() {
     )
   `);
 
+  // Réactions aux messages (canaux et DM)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS message_reactions (
+      id TEXT PRIMARY KEY,
+      message_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      emoji TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(message_id, user_id, emoji)
+    )
+  `);
+
+  // Pièces jointes / fichiers
+  db.run(`
+    CREATE TABLE IF NOT EXISTS message_attachments (
+      id TEXT PRIMARY KEY,
+      message_id TEXT NOT NULL,
+      filename TEXT NOT NULL,
+      original_name TEXT NOT NULL,
+      mimetype TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      url TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Messages épinglés
+  db.run(`
+    CREATE TABLE IF NOT EXISTS pinned_messages (
+      id TEXT PRIMARY KEY,
+      channel_id TEXT NOT NULL,
+      message_id TEXT NOT NULL,
+      pinned_by TEXT NOT NULL,
+      pinned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(channel_id, message_id)
+    )
+  `);
+
+  // Migrations pour messages : ajouter colonnes manquantes
+  try { db.run('ALTER TABLE messages ADD COLUMN edited_at DATETIME DEFAULT NULL'); } catch(e) {}
+  try { db.run('ALTER TABLE messages ADD COLUMN is_deleted INTEGER DEFAULT 0'); } catch(e) {}
+  try { db.run('ALTER TABLE messages ADD COLUMN reply_to TEXT DEFAULT NULL'); } catch(e) {}
+  try { db.run('ALTER TABLE messages ADD COLUMN attachments TEXT DEFAULT NULL'); } catch(e) {}
+
+  // Migrations pour channels : ajouter type vocal
+  try { db.run('ALTER TABLE channels ADD COLUMN topic TEXT DEFAULT NULL'); } catch(e) {}
+  try { db.run('ALTER TABLE channels ADD COLUMN position INTEGER DEFAULT 0'); } catch(e) {}
+  try { db.run('ALTER TABLE channels ADD COLUMN category TEXT DEFAULT \'GÉNÉRAL\''); } catch(e) {}
+
+  // Migrations DM : colonnes supplémentaires
+  try { db.run('ALTER TABLE direct_messages ADD COLUMN is_deleted INTEGER DEFAULT 0'); } catch(e) {}
+  try { db.run('ALTER TABLE direct_messages ADD COLUMN edited_at DATETIME DEFAULT NULL'); } catch(e) {}
+  try { db.run('ALTER TABLE direct_messages ADD COLUMN reply_to TEXT DEFAULT NULL'); } catch(e) {}
+
+  // Migrations users : custom status + avatar_url
+  try { db.run('ALTER TABLE users ADD COLUMN custom_status TEXT DEFAULT NULL'); } catch(e) {}
+  try { db.run('ALTER TABLE users ADD COLUMN banner_color TEXT DEFAULT \'#5865f2\''); } catch(e) {}
+
   // Sauvegarder sur disque
   save();
 

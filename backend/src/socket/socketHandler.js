@@ -105,30 +105,122 @@ function setupSocket(io) {
      * Envoyer un message dans un salon
      */
     socket.on('message:send', (data) => {
-      const { channelId, content } = data;
-
-      if (!content || !content.trim() || !channelId) return;
+      const { channelId, content, replyTo, attachments } = data;
+      if ((!content || !content.trim()) && (!attachments || !attachments.length)) return;
+      if (!channelId) return;
 
       const messageId = uuidv4();
       const now = new Date().toISOString();
+      const trimmedContent = (content || '').trim();
 
-      // Sauvegarder le message en base
-      db.run('INSERT INTO messages (id, content, author_id, channel_id, created_at) VALUES (?, ?, ?, ?, ?)',
-        [messageId, content.trim(), userId, channelId, now]);
+      db.run(
+        'INSERT INTO messages (id, content, author_id, channel_id, created_at, reply_to) VALUES (?, ?, ?, ?, ?, ?)',
+        [messageId, trimmedContent, userId, channelId, now, replyTo || null]
+      );
 
-      // Construire l'objet message complet
+      // Sauvegarder les pièces jointes
+      if (attachments && attachments.length) {
+        for (const att of attachments) {
+          db.run(
+            'INSERT INTO message_attachments (id, message_id, filename, original_name, mimetype, size, url) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [uuidv4(), messageId, att.filename, att.originalName, att.mimetype, att.size, att.url]
+          );
+        }
+      }
+
       const message = {
         id: messageId,
-        content: content.trim(),
+        content: trimmedContent,
         author_id: userId,
         author_username: socket.user.username,
         author_avatar: null,
         channel_id: channelId,
         created_at: now,
+        edited_at: null,
+        reply_to: replyTo || null,
+        replied_message: null,
+        reactions: [],
+        attachments: attachments || [],
       };
 
-      // Diffuser le message à tous dans le salon
+      // Récupérer le message cité si besoin
+      if (replyTo) {
+        const replied = db.get(
+          'SELECT m.*, u.username as author_username FROM messages m INNER JOIN users u ON m.author_id = u.id WHERE m.id = ?',
+          [replyTo]
+        );
+        message.replied_message = replied || null;
+      }
+
       io.to(`channel:${channelId}`).emit('message:new', message);
+
+      // Mentions @username
+      const mentionRegex = /@([a-zA-Z0-9_]+)/g;
+      let match;
+      while ((match = mentionRegex.exec(trimmedContent)) !== null) {
+        const mentionedUser = db.get('SELECT id FROM users WHERE LOWER(username) = LOWER(?)', [match[1]]);
+        if (mentionedUser && mentionedUser.id !== userId && onlineUsers.has(mentionedUser.id)) {
+          onlineUsers.get(mentionedUser.id).forEach((sid) => {
+            io.to(sid).emit('mention:new', { channelId, message, mentionedBy: socket.user.username });
+          });
+        }
+      }
+    });
+
+    /** Modifier un message */
+    socket.on('message:edit', ({ messageId, content }) => {
+      if (!content?.trim() || !messageId) return;
+      const msg = db.get('SELECT * FROM messages WHERE id = ? AND author_id = ? AND is_deleted = 0', [messageId, userId]);
+      if (!msg) return;
+      const now = new Date().toISOString();
+      db.run('UPDATE messages SET content = ?, edited_at = ? WHERE id = ?', [content.trim(), now, messageId]);
+      io.to(`channel:${msg.channel_id}`).emit('message:edited', {
+        messageId, content: content.trim(), edited_at: now, channelId: msg.channel_id,
+      });
+    });
+
+    /** Supprimer un message */
+    socket.on('message:delete', ({ messageId }) => {
+      if (!messageId) return;
+      const msg = db.get('SELECT * FROM messages WHERE id = ?', [messageId]);
+      if (!msg) return;
+      const channel = db.get('SELECT * FROM channels WHERE id = ?', [msg.channel_id]);
+      if (!channel) return;
+      const membership = db.get('SELECT * FROM server_members WHERE server_id = ? AND user_id = ?', [channel.server_id, userId]);
+      const server = db.get('SELECT owner_id FROM servers WHERE id = ?', [channel.server_id]);
+      const canDelete = msg.author_id === userId || server?.owner_id === userId || membership?.role === 'admin' || membership?.role === 'moderator';
+      if (!canDelete) return;
+      try {
+        db.run('UPDATE messages SET is_deleted = 1 WHERE id = ?', [messageId]);
+        // Émettre l'événement SEULEMENT si la persistance a réussi
+        io.to(`channel:${msg.channel_id}`).emit('message:deleted', { messageId, channelId: msg.channel_id });
+      } catch (err) {
+        console.error('Erreur lors de la suppression du message:', err);
+      }
+    });
+
+    /** Réaction à un message */
+    socket.on('message:react', ({ messageId, emoji }) => {
+      if (!messageId || !emoji) return;
+      const msg = db.get('SELECT * FROM messages WHERE id = ?', [messageId]);
+      if (!msg) return;
+      const existing = db.get('SELECT * FROM message_reactions WHERE message_id = ? AND user_id = ? AND emoji = ?', [messageId, userId, emoji]);
+      if (existing) {
+        db.run('DELETE FROM message_reactions WHERE message_id = ? AND user_id = ? AND emoji = ?', [messageId, userId, emoji]);
+      } else {
+        db.run('INSERT INTO message_reactions (id, message_id, user_id, emoji) VALUES (?, ?, ?, ?)', [uuidv4(), messageId, userId, emoji]);
+      }
+      // Récupérer toutes les réactions mises à jour
+      const rawReactions = db.all('SELECT emoji, user_id FROM message_reactions WHERE message_id = ?', [messageId]);
+      const reactionsMap = {};
+      for (const r of rawReactions) {
+        if (!reactionsMap[r.emoji]) reactionsMap[r.emoji] = { emoji: r.emoji, count: 0, users: [] };
+        reactionsMap[r.emoji].count++;
+        reactionsMap[r.emoji].users.push(r.user_id);
+      }
+      io.to(`channel:${msg.channel_id}`).emit('message:reactions', {
+        messageId, channelId: msg.channel_id, reactions: Object.values(reactionsMap),
+      });
     });
 
     /**
@@ -177,27 +269,45 @@ function setupSocket(io) {
      * Envoyer un message privé
      */
     socket.on('dm:send', (data) => {
-      const { conversationId, recipientId, content } = data;
+      const { conversationId, recipientId, content, replyTo } = data;
       if (!content || !content.trim() || !conversationId) return;
 
       const messageId = uuidv4();
       const now = new Date().toISOString();
 
-      // Sauvegarder en base
+      // Sauvegarder en base (avec reply_to)
       db.run(
-        'INSERT INTO direct_messages (id, content, sender_id, recipient_id, created_at) VALUES (?, ?, ?, ?, ?)',
-        [messageId, content.trim(), userId, recipientId, now]
+        'INSERT INTO direct_messages (id, content, sender_id, recipient_id, created_at, reply_to) VALUES (?, ?, ?, ?, ?, ?)',
+        [messageId, content.trim(), userId, recipientId, now, replyTo || null]
       );
 
       const message = {
         id: messageId,
         content: content.trim(),
+        author_id: userId,
         sender_id: userId,
         recipient_id: recipientId,
         author_username: socket.user.username,
         author_avatar: null,
         created_at: now,
+        edited_at: null,
+        reply_to: replyTo || null,
+        replied_message: null,
+        reactions: [],
       };
+
+      // Récupérer le message cité si besoin
+      if (replyTo) {
+        const replied = db.get(
+          `SELECT dm.id, dm.content, dm.sender_id AS author_id, dm.is_deleted,
+                  u.username AS author_username
+           FROM direct_messages dm
+           LEFT JOIN users u ON dm.sender_id = u.id
+           WHERE dm.id = ?`,
+          [replyTo]
+        );
+        message.replied_message = replied || null;
+      }
 
       // Envoyer au salon DM
       io.to(`dm:${conversationId}`).emit('dm:new', { conversationId, message });
@@ -212,6 +322,52 @@ function setupSocket(io) {
           }
         });
       }
+    });
+
+    /** Modifier un message DM */
+    socket.on('dm:edit', ({ messageId, content, conversationId }) => {
+      if (!messageId || !content?.trim() || !conversationId) return;
+      const msg = db.get('SELECT * FROM direct_messages WHERE id = ? AND sender_id = ?', [messageId, userId]);
+      if (!msg) return;
+      const now = new Date().toISOString();
+      db.run('UPDATE direct_messages SET content = ?, edited_at = ? WHERE id = ?', [content.trim(), now, messageId]);
+      io.to(`dm:${conversationId}`).emit('dm:edited', { messageId, content: content.trim(), edited_at: now, conversationId });
+    });
+
+    /** Supprimer un message DM */
+    socket.on('dm:delete', ({ messageId, conversationId }) => {
+      if (!messageId || !conversationId) return;
+      const msg = db.get('SELECT * FROM direct_messages WHERE id = ? AND sender_id = ?', [messageId, userId]);
+      if (!msg) return;
+      try {
+        db.run('UPDATE direct_messages SET is_deleted = 1 WHERE id = ?', [messageId]);
+        io.to(`dm:${conversationId}`).emit('dm:deleted', { messageId, conversationId });
+      } catch (err) {
+        console.error('Erreur lors de la suppression du DM:', err);
+      }
+    });
+
+    /** Réagir à un message DM */
+    socket.on('dm:react', ({ messageId, emoji, conversationId }) => {
+      if (!messageId || !emoji || !conversationId) return;
+      const msg = db.get('SELECT * FROM direct_messages WHERE id = ?', [messageId]);
+      if (!msg) return;
+      const existing = db.get('SELECT * FROM message_reactions WHERE message_id = ? AND user_id = ? AND emoji = ?', [messageId, userId, emoji]);
+      if (existing) {
+        db.run('DELETE FROM message_reactions WHERE message_id = ? AND user_id = ? AND emoji = ?', [messageId, userId, emoji]);
+      } else {
+        db.run('INSERT INTO message_reactions (id, message_id, user_id, emoji) VALUES (?, ?, ?, ?)', [uuidv4(), messageId, userId, emoji]);
+      }
+      const rawReactions = db.all('SELECT emoji, user_id FROM message_reactions WHERE message_id = ?', [messageId]);
+      const reactionsMap = {};
+      for (const r of rawReactions) {
+        if (!reactionsMap[r.emoji]) reactionsMap[r.emoji] = { emoji: r.emoji, count: 0, users: [] };
+        reactionsMap[r.emoji].count++;
+        reactionsMap[r.emoji].users.push(r.user_id);
+      }
+      io.to(`dm:${conversationId}`).emit('dm:reactions', {
+        messageId, conversationId, reactions: Object.values(reactionsMap),
+      });
     });
 
     /**
@@ -233,6 +389,95 @@ function setupSocket(io) {
         conversationId,
         isTyping: false,
       });
+    });
+
+    /**
+     * ─── SIGNALISATION WEBRTC (appels vocaux) ────────────────────────────────
+     * Le serveur agit uniquement comme relais : il transmet les messages
+     * de signalisation entre les deux pairs sans interpréter leur contenu.
+     *
+     * Flux :
+     *   call:initiate  → notifie le destinataire d'un appel entrant
+     *   call:accept    → le destinataire décroche, notifie l'appelant
+     *   call:reject    → le destinataire refuse
+     *   call:offer     → SDP offer de l'appelant vers le destinataire
+     *   call:answer    → SDP answer du destinataire vers l'appelant
+     *   call:ice-candidate → candidats ICE (les deux sens)
+     *   call:end       → fin d'appel (les deux sens)
+     */
+
+    /** Appel entrant : notifier le destinataire */
+    socket.on('call:initiate', ({ to, callId }) => {
+      if (!to || !callId) return;
+      if (onlineUsers.has(to)) {
+        onlineUsers.get(to).forEach((sid) => {
+          io.to(sid).emit('call:incoming', {
+            from: userId,
+            fromUsername: socket.user.username,
+            callId,
+          });
+        });
+      }
+    });
+
+    /** Le destinataire accepte : notifier l'appelant */
+    socket.on('call:accept', ({ to, callId }) => {
+      if (!to || !callId) return;
+      if (onlineUsers.has(to)) {
+        onlineUsers.get(to).forEach((sid) => {
+          io.to(sid).emit('call:accepted', { from: userId, callId });
+        });
+      }
+    });
+
+    /** Le destinataire refuse : notifier l'appelant */
+    socket.on('call:reject', ({ to, callId }) => {
+      if (!to || !callId) return;
+      if (onlineUsers.has(to)) {
+        onlineUsers.get(to).forEach((sid) => {
+          io.to(sid).emit('call:rejected', { from: userId, callId });
+        });
+      }
+    });
+
+    /** SDP offer : relayer de l'appelant vers le destinataire */
+    socket.on('call:offer', ({ to, callId, offer }) => {
+      if (!to || !offer) return;
+      if (onlineUsers.has(to)) {
+        onlineUsers.get(to).forEach((sid) => {
+          io.to(sid).emit('call:offer', { from: userId, callId, offer });
+        });
+      }
+    });
+
+    /** SDP answer : relayer du destinataire vers l'appelant */
+    socket.on('call:answer', ({ to, callId, answer }) => {
+      if (!to || !answer) return;
+      if (onlineUsers.has(to)) {
+        onlineUsers.get(to).forEach((sid) => {
+          io.to(sid).emit('call:answer', { from: userId, callId, answer });
+        });
+      }
+    });
+
+    /** Candidat ICE : relayer dans les deux sens */
+    socket.on('call:ice-candidate', ({ to, candidate }) => {
+      if (!to || !candidate) return;
+      if (onlineUsers.has(to)) {
+        onlineUsers.get(to).forEach((sid) => {
+          io.to(sid).emit('call:ice-candidate', { from: userId, candidate });
+        });
+      }
+    });
+
+    /** Fin d'appel : notifier le correspondant */
+    socket.on('call:end', ({ to, callId }) => {
+      if (!to) return;
+      if (onlineUsers.has(to)) {
+        onlineUsers.get(to).forEach((sid) => {
+          io.to(sid).emit('call:ended', { from: userId, callId });
+        });
+      }
     });
 
     /**

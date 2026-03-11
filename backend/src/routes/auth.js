@@ -132,4 +132,52 @@ router.get('/me', authMiddleware, (req, res) => {
   }
 });
 
+/**
+ * PUT /api/auth/profile
+ * Mettre à jour le profil (username, email) ou le mot de passe
+ */
+router.put('/profile', authMiddleware, async (req, res) => {
+  try {
+    const { username, email, currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    // Changement de mot de passe
+    if (currentPassword && newPassword) {
+      const bcrypt = require('bcryptjs');
+      const user = db.get('SELECT * FROM users WHERE id = ?', [userId]);
+      const valid = await bcrypt.compare(currentPassword, user.password_hash);
+      if (!valid) {
+        return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
+      }
+      const hash = await bcrypt.hash(newPassword, 10);
+      db.run('UPDATE users SET password_hash = ? WHERE id = ?', [hash, userId]);
+      return res.json({ message: 'Mot de passe modifié' });
+    }
+
+    // Mise à jour du profil
+    if (username) {
+      // Vérifier l'unicité
+      const existing = db.get('SELECT id FROM users WHERE username = ? AND id != ?', [username, userId]);
+      if (existing) {
+        return res.status(400).json({ error: 'Ce nom d\'utilisateur est déjà pris' });
+      }
+    }
+
+    db.run(
+      'UPDATE users SET username = COALESCE(?, username), email = COALESCE(?, email) WHERE id = ?',
+      [username || null, email || null, userId]
+    );
+
+    const updated = db.get(
+      'SELECT id, username, email, avatar, status, created_at FROM users WHERE id = ?',
+      [userId]
+    );
+
+    res.json({ user: updated });
+  } catch (err) {
+    console.error('PUT /auth/profile error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;

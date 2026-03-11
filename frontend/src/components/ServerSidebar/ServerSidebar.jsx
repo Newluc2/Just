@@ -11,7 +11,7 @@ import useStore from '../../store/useStore';
 import './ServerSidebar.css';
 
 export default function ServerSidebar() {
-  const { servers, currentServer, selectServer, createServer, joinServer, logout, user } = useStore();
+  const { servers, currentServer, selectServer, createServer, joinServer, logout, user, activeView, setActiveView } = useStore();
   const [showModal, setShowModal] = useState(null); // 'create' | 'join' | null
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState('');
@@ -59,9 +59,16 @@ export default function ServerSidebar() {
   return (
     <>
       <div className="server-sidebar">
-        {/* Logo Just / Bouton accueil */}
+        {/* Logo Just / Bouton DM */}
         <div className="server-icon-wrapper">
-          <div className="server-icon home-icon" title="Accueil Just">
+          <div
+            className={`server-pill ${activeView === 'dm' ? 'active' : ''}`}
+          />
+          <div
+            className={`server-icon home-icon ${activeView === 'dm' ? 'active' : ''}`}
+            onClick={() => setActiveView('dm')}
+            title="Messages Privés"
+          >
             <span>J</span>
           </div>
         </div>
