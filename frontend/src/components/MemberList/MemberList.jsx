@@ -40,12 +40,16 @@ export default function MemberList() {
       onClick={(e) => handleMemberClick(member, e)}
     >
       <div className="member-avatar-wrapper">
-        <div
-          className="member-avatar"
-          style={{ background: getAvatarColor(member.username) }}
-        >
-          {(member.username || '?').charAt(0).toUpperCase()}
-        </div>
+        {member.avatar ? (
+          <img src={member.avatar} alt="" className="member-avatar member-avatar-img" />
+        ) : (
+          <div
+            className="member-avatar"
+            style={{ background: getAvatarColor(member.username) }}
+          >
+            {(member.username || '?').charAt(0).toUpperCase()}
+          </div>
+        )}
         <div className={`member-status-dot ${member.online || member.status === 'online' ? 'online' : 'offline'}`} />
       </div>
       <div className="member-info">
@@ -53,7 +57,7 @@ export default function MemberList() {
           className={`member-name ${!member.online && member.status !== 'online' ? 'offline' : ''}`}
           style={{ color: member.role_color || undefined }}
         >
-          {member.username}
+          {member.display_name || member.username}
         </span>
         {(member.role_name || member.role) && (
           <span className="member-badge" style={{ backgroundColor: member.role_color || '#5865f2' }}>

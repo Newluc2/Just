@@ -161,7 +161,9 @@ router.get('/messages/:conversationId', (req, res) => {
         dm.created_at,
         dm.edited_at,
         dm.reply_to,
-        u.username     AS author_username
+        u.username     AS author_username,
+        u.display_name AS author_display_name,
+        u.avatar       AS author_avatar
        FROM direct_messages dm
        JOIN users u ON u.id = dm.sender_id
        WHERE ((dm.sender_id = ? AND dm.recipient_id = ?)

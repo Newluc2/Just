@@ -5,8 +5,9 @@
  */
 
 import { useEffect, useState } from 'react';
-import { MessageSquare, Plus, Search, X } from 'lucide-react';
+import { MessageSquare, Plus, Search, X, Settings } from 'lucide-react';
 import useStore from '../../store/useStore';
+import SettingsModal from '../SettingsModal/SettingsModal';
 import './DMSidebar.css';
 
 export default function DMSidebar() {
@@ -19,6 +20,7 @@ export default function DMSidebar() {
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // Charger les conversations au montage
   useEffect(() => {
@@ -165,6 +167,29 @@ export default function DMSidebar() {
           );
         })}
       </div>
+
+      {/* Info utilisateur en bas */}
+      <div className="user-panel">
+        <div className="user-avatar">
+          {user?.avatar ? (
+            <img src={user.avatar} alt="" className="user-avatar-img" />
+          ) : (
+            user?.username?.charAt(0).toUpperCase()
+          )}
+        </div>
+        <div className="user-info">
+          <span className="user-name">{user?.display_name || user?.username}</span>
+          <span className="user-status">{user?.username}</span>
+        </div>
+        <button className="user-settings-btn" title="Paramètres" onClick={() => setShowSettingsModal(true)}>
+          <Settings size={18} />
+        </button>
+      </div>
+
+      {/* Modal de paramètres */}
+      {showSettingsModal && (
+        <SettingsModal onClose={() => setShowSettingsModal(false)} />
+      )}
     </div>
   );
 }

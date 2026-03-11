@@ -147,6 +147,10 @@
   cursor: pointer;
 }
 
+.message-avatar-img {
+  object-fit: cover;
+}
+
 .message-content {
   flex: 1;
   min-width: 0;

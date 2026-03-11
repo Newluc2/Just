@@ -62,6 +62,16 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
+.popover-avatar-img {
+  object-fit: cover;
+}
+
+.popover-username-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: -8px;
+}
+
 /* Point de statut positionné en bas-droite de l'avatar */
 .popover-status-dot {
   position: absolute;

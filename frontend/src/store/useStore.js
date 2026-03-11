@@ -601,6 +601,23 @@ const useStore = create((set, get) => ({
     return data.user;
   },
 
+  /**
+   * Upload d'un avatar utilisateur
+   */
+  uploadAvatar: async (file) => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/auth/avatar`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${get().token}` },
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Upload échoué');
+    const data = await response.json();
+    set({ user: data.user });
+    return data.user;
+  },
+
   // ===== POPOVER =====
   profilePopover: null, // { member, position }
 

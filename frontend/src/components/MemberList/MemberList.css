@@ -50,6 +50,10 @@
   font-size: 13px;
 }
 
+.member-avatar-img {
+  object-fit: cover;
+}
+
 .member-status-dot {
   position: absolute;
   bottom: -1px;

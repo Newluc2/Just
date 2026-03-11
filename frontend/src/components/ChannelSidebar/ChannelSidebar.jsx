@@ -159,11 +159,15 @@ export default function ChannelSidebar() {
       {/* Info utilisateur en bas */}
       <div className="user-panel">
         <div className="user-avatar">
-          {user?.username?.charAt(0).toUpperCase()}
+          {user?.avatar ? (
+            <img src={user.avatar} alt="" className="user-avatar-img" />
+          ) : (
+            user?.username?.charAt(0).toUpperCase()
+          )}
         </div>
         <div className="user-info">
-          <span className="user-name">{user?.username}</span>
-          <span className="user-status">En ligne</span>
+          <span className="user-name">{user?.display_name || user?.username}</span>
+          <span className="user-status">{user?.username}</span>
         </div>
         <button className="user-settings-btn" title="Paramètres" onClick={() => setShowSettingsModal(true)}>
           <Settings size={18} />

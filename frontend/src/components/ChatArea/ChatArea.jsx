@@ -278,9 +278,13 @@ export default function ChatArea() {
           return (
             <div key={msg.id} className={`message ${grouped ? 'grouped' : ''}`} onContextMenu={(e) => handleContextMenu(e, msg)}>
               {!grouped && (
-                <div className="message-avatar" style={{ background: getAvatarColor(msg.author_username) }}>
-                  {(msg.author_username || '?').charAt(0).toUpperCase()}
-                </div>
+                msg.author_avatar ? (
+                  <img src={msg.author_avatar} alt="" className="message-avatar message-avatar-img" />
+                ) : (
+                  <div className="message-avatar" style={{ background: getAvatarColor(msg.author_username) }}>
+                    {(msg.author_username || '?').charAt(0).toUpperCase()}
+                  </div>
+                )
               )}
               <div className={`message-content ${grouped ? 'grouped-content' : ''}`}>
                 {/* Citation (reply) — le backend envoie msg.reply_to (id) + msg.replied_message (objet) */}
@@ -297,7 +301,7 @@ export default function ChatArea() {
                 )}
                 {!grouped && (
                   <div className="message-header">
-                    <span className="message-author" style={{ color: getAvatarColor(msg.author_username) }}>{msg.author_username}</span>
+                    <span className="message-author" style={{ color: getAvatarColor(msg.author_username) }}>{msg.author_display_name || msg.author_username}</span>
                     <span className="message-time">{formatTime(msg.created_at)}</span>
                   </div>
                 )}

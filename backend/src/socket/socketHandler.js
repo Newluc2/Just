@@ -61,7 +61,7 @@ function setupSocket(io) {
 
       // Envoyer la liste des utilisateurs en ligne pour ce serveur
       const members = db.all(`
-        SELECT u.id, u.username, u.avatar, u.status, u.about, u.created_at,
+        SELECT u.id, u.username, u.display_name, u.avatar, u.status, u.about, u.created_at,
                sm.role, sm.role_id, sm.joined_at,
                sr.name as role_name, sr.color as role_color, sr.position as role_position
         FROM users u
@@ -128,12 +128,16 @@ function setupSocket(io) {
         }
       }
 
+      const currentUser = db.get('SELECT username, display_name, avatar FROM users WHERE id = ?', [userId]);
+      const displayName = currentUser?.display_name || currentUser?.username || socket.user.username;
+
       const message = {
         id: messageId,
         content: trimmedContent,
         author_id: userId,
-        author_username: socket.user.username,
-        author_avatar: null,
+        author_username: currentUser?.username || socket.user.username,
+        author_display_name: currentUser?.display_name || null,
+        author_avatar: currentUser?.avatar || null,
         channel_id: channelId,
         created_at: now,
         edited_at: null,
@@ -281,14 +285,17 @@ function setupSocket(io) {
         [messageId, content.trim(), userId, recipientId, now, replyTo || null]
       );
 
+      const dmUser = db.get('SELECT username, display_name, avatar FROM users WHERE id = ?', [userId]);
+
       const message = {
         id: messageId,
         content: content.trim(),
         author_id: userId,
         sender_id: userId,
         recipient_id: recipientId,
-        author_username: socket.user.username,
-        author_avatar: null,
+        author_username: dmUser?.username || socket.user.username,
+        author_display_name: dmUser?.display_name || null,
+        author_avatar: dmUser?.avatar || null,
         created_at: now,
         edited_at: null,
         reply_to: replyTo || null,

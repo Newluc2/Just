@@ -57,25 +57,32 @@ export default function UserProfilePopover({ member, position, onClose, onStartD
 
         {/* Avatar */}
         <div className="popover-avatar-section">
-          <div
-            className="popover-avatar"
-            style={{ background: getAvatarColor(member.username) }}
-          >
-            {(member.username || '?').charAt(0).toUpperCase()}
-          </div>
+          {member.avatar ? (
+            <img src={member.avatar} alt="" className="popover-avatar popover-avatar-img" />
+          ) : (
+            <div
+              className="popover-avatar"
+              style={{ background: getAvatarColor(member.username) }}
+            >
+              {(member.username || '?').charAt(0).toUpperCase()}
+            </div>
+          )}
           <div className={`popover-status-dot ${isOnline ? 'online' : 'offline'}`} />
         </div>
 
         {/* Info */}
         <div className="popover-info">
           <div className="popover-name-row">
-            <h3 style={{ color: member.role_color || undefined }}>{member.username}</h3>
+            <h3 style={{ color: member.role_color || undefined }}>{member.display_name || member.username}</h3>
             {(member.role_name || member.role) && (
               <span className="popover-badge" style={{ backgroundColor: member.role_color || '#5865f2' }}>
                 {member.role_name || member.role}
               </span>
             )}
           </div>
+          {member.display_name && (
+            <span className="popover-username-sub">{member.username}</span>
+          )}
           <span className="popover-status-text">
             {isOnline ? 'En ligne' : 'Hors ligne'}
           </span>

@@ -70,7 +70,7 @@ router.get('/:channelId', authMiddleware, (req, res) => {
     const membership = db.get('SELECT * FROM server_members WHERE server_id = ? AND user_id = ?', [channel.server_id, req.user.id]);
     if (!membership) return res.status(403).json({ error: 'Accès refusé' });
     const beforeClause = before ? 'AND m.created_at < ?' : '';
-    const sql = `SELECT m.*, u.username as author_username, u.avatar as author_avatar FROM messages m INNER JOIN users u ON m.author_id = u.id WHERE m.channel_id = ? AND m.is_deleted = 0 ${beforeClause} ORDER BY m.created_at DESC LIMIT ?`;
+    const sql = `SELECT m.*, u.username as author_username, u.display_name as author_display_name, u.avatar as author_avatar FROM messages m INNER JOIN users u ON m.author_id = u.id WHERE m.channel_id = ? AND m.is_deleted = 0 ${beforeClause} ORDER BY m.created_at DESC LIMIT ?`;
     const messages = before ? db.all(sql, [channelId, before, parseInt(limit)]) : db.all(sql, [channelId, parseInt(limit)]);
     res.json({ messages: messages.reverse().map(enrichMessage) });
   } catch (err) {
@@ -89,7 +89,7 @@ router.put('/:messageId', authMiddleware, (req, res) => {
     if (!msg) return res.status(404).json({ error: 'Message non trouvé' });
     if (msg.author_id !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
     db.run('UPDATE messages SET content = ?, edited_at = ? WHERE id = ?', [content.trim(), new Date().toISOString(), messageId]);
-    const updated = db.get(`SELECT m.*, u.username as author_username FROM messages m INNER JOIN users u ON m.author_id = u.id WHERE m.id = ?`, [messageId]);
+    const updated = db.get(`SELECT m.*, u.username as author_username, u.display_name as author_display_name FROM messages m INNER JOIN users u ON m.author_id = u.id WHERE m.id = ?`, [messageId]);
     res.json({ message: enrichMessage(updated) });
   } catch (err) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
@@ -135,7 +135,7 @@ router.get('/pinned/:channelId', authMiddleware, (req, res) => {
   try {
     const { channelId } = req.params;
     const pins = db.all(
-      `SELECT m.*, u.username as author_username, p.pinned_at FROM pinned_messages p INNER JOIN messages m ON p.message_id = m.id INNER JOIN users u ON m.author_id = u.id WHERE p.channel_id = ? AND m.is_deleted = 0 ORDER BY p.pinned_at DESC`,
+      `SELECT m.*, u.username as author_username, u.display_name as author_display_name, p.pinned_at FROM pinned_messages p INNER JOIN messages m ON p.message_id = m.id INNER JOIN users u ON m.author_id = u.id WHERE p.channel_id = ? AND m.is_deleted = 0 ORDER BY p.pinned_at DESC`,
       [channelId]
     );
     res.json({ pins: pins.map(enrichMessage) });

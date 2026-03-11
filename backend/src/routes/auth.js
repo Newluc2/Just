@@ -8,10 +8,35 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const db = require('../database/db');
 const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
+
+// ── Multer pour avatar ─────────────────────────────────────────────────
+const UPLOAD_DIR = path.join(__dirname, '../../uploads');
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+const avatarStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `avatar-${req.user.id}${ext}`);
+  },
+});
+
+const avatarUpload = multer({
+  storage: avatarStorage,
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = /\.(jpg|jpeg|png|gif|webp)$/i;
+    if (!allowed.test(file.originalname)) return cb(new Error('Type de fichier non autorisé'));
+    cb(null, true);
+  },
+});
 
 /**
  * POST /api/auth/register
@@ -57,7 +82,7 @@ router.post('/register', async (req, res) => {
 
     res.status(201).json({
       token,
-      user: { id: userId, username, email, avatar: null, status: 'online' },
+      user: { id: userId, username, email, avatar: null, display_name: null, status: 'online' },
     });
   } catch (err) {
     console.error('Register error:', err);
@@ -103,6 +128,7 @@ router.post('/login', async (req, res) => {
         username: user.username,
         email: user.email,
         avatar: user.avatar,
+        display_name: user.display_name || null,
         status: 'online',
       },
     });
@@ -118,7 +144,7 @@ router.post('/login', async (req, res) => {
  */
 router.get('/me', authMiddleware, (req, res) => {
   try {
-    const user = db.get('SELECT id, username, email, avatar, status, created_at FROM users WHERE id = ?',
+    const user = db.get('SELECT id, username, email, avatar, display_name, status, created_at FROM users WHERE id = ?',
       [req.user.id]);
 
     if (!user) {
@@ -154,6 +180,8 @@ router.put('/profile', authMiddleware, async (req, res) => {
       return res.json({ message: 'Mot de passe modifié' });
     }
 
+    const { display_name: displayName } = req.body;
+
     // Mise à jour du profil
     if (username) {
       // Vérifier l'unicité
@@ -164,18 +192,38 @@ router.put('/profile', authMiddleware, async (req, res) => {
     }
 
     db.run(
-      'UPDATE users SET username = COALESCE(?, username), email = COALESCE(?, email) WHERE id = ?',
-      [username || null, email || null, userId]
+      'UPDATE users SET username = COALESCE(?, username), email = COALESCE(?, email), display_name = COALESCE(?, display_name) WHERE id = ?',
+      [username || null, email || null, displayName !== undefined ? (displayName || null) : undefined, userId]
     );
 
     const updated = db.get(
-      'SELECT id, username, email, avatar, status, created_at FROM users WHERE id = ?',
+      'SELECT id, username, email, avatar, display_name, status, created_at FROM users WHERE id = ?',
       [userId]
     );
 
     res.json({ user: updated });
   } catch (err) {
     console.error('PUT /auth/profile error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * POST /api/auth/avatar
+ * Upload d'un avatar utilisateur
+ */
+router.post('/avatar', authMiddleware, avatarUpload.single('avatar'), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Aucun fichier' });
+    const avatarUrl = `/uploads/${req.file.filename}`;
+    db.run('UPDATE users SET avatar = ? WHERE id = ?', [avatarUrl, req.user.id]);
+    const updated = db.get(
+      'SELECT id, username, email, avatar, display_name, status, created_at FROM users WHERE id = ?',
+      [req.user.id]
+    );
+    res.json({ user: updated });
+  } catch (err) {
+    console.error('POST /auth/avatar error:', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });

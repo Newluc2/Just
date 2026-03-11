@@ -228,9 +228,10 @@ async function initialize() {
   try { db.run('ALTER TABLE direct_messages ADD COLUMN edited_at DATETIME DEFAULT NULL'); } catch(e) {}
   try { db.run('ALTER TABLE direct_messages ADD COLUMN reply_to TEXT DEFAULT NULL'); } catch(e) {}
 
-  // Migrations users : custom status + avatar_url
+  // Migrations users : custom status + avatar_url + display_name
   try { db.run('ALTER TABLE users ADD COLUMN custom_status TEXT DEFAULT NULL'); } catch(e) {}
   try { db.run('ALTER TABLE users ADD COLUMN banner_color TEXT DEFAULT \'#5865f2\''); } catch(e) {}
+  try { db.run('ALTER TABLE users ADD COLUMN display_name TEXT DEFAULT NULL'); } catch(e) {}
 
   // Sauvegarder sur disque
   save();
