@@ -239,3 +239,256 @@
   background: rgba(87, 242, 135, 0.15);
   color: #9ff5bc;
 }
+
+/* ── Channels tab ── */
+.settings-section h3 {
+  color: #d0d0e0;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 16px 0 8px;
+}
+
+.settings-section h3:first-child {
+  margin-top: 0;
+}
+
+.channel-create-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.channel-create-row select {
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: #11121b;
+  color: white;
+  min-width: 120px;
+}
+
+.channels-management {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cat-group {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.cat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cat-name {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #a0a0b0;
+  text-transform: uppercase;
+}
+
+.cat-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.cat-actions button {
+  background: none;
+  border: none;
+  color: #777;
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 4px;
+}
+
+.cat-actions button:hover {
+  color: #ccc;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.danger-sm {
+  color: #ff8f92 !important;
+}
+
+.danger-sm:hover {
+  background: rgba(237, 66, 69, 0.15) !important;
+}
+
+.cat-rename-row {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.cat-rename-row input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: #11121b;
+  color: white;
+  font-size: 12px;
+}
+
+.cat-rename-ok,
+.cat-rename-cancel {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px;
+  color: #a0a0b0;
+}
+
+.ch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.ch-row:last-child {
+  border-bottom: none;
+}
+
+.ch-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #c0c0d0;
+  font-size: 14px;
+}
+
+.ch-edit-input {
+  padding: 3px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  background: #11121b;
+  color: white;
+  font-size: 13px;
+  width: 120px;
+}
+
+.ch-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ch-actions button {
+  background: none;
+  border: none;
+  color: #777;
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 4px;
+}
+
+.ch-actions button:hover {
+  color: #ccc;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ch-move-select {
+  padding: 3px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  background: #11121b;
+  color: #aaa;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+/* ── Permissions panel ── */
+.perm-panel {
+  background: #161823;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.perm-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.perm-panel-header h3 {
+  margin: 0;
+  color: white;
+  font-size: 14px;
+  text-transform: none;
+}
+
+.perm-close {
+  background: none;
+  border: none;
+  color: #777;
+  cursor: pointer;
+}
+
+.perm-hint {
+  font-size: 12px;
+  color: #888;
+  margin: 0 0 10px;
+}
+
+.perm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.perm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+}
+
+.perm-role {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #d0d0e0;
+  font-size: 13px;
+}
+
+.perm-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.perm-toggle.allowed {
+  background: rgba(87, 242, 135, 0.15);
+  color: #57f287;
+}
+
+.perm-toggle.denied {
+  background: rgba(237, 66, 69, 0.15);
+  color: #ff8f92;
+}

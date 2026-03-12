@@ -297,13 +297,13 @@ const useStore = create((set, get) => ({
   /**
    * Créer un nouveau salon
    */
-  createChannel: async (name) => {
+  createChannel: async (name, category) => {
     const serverId = get().currentServer?.id;
     if (!serverId) return;
 
     const data = await apiFetch('/channels', {
       method: 'POST',
-      body: JSON.stringify({ name, serverId }),
+      body: JSON.stringify({ name, serverId, category }),
     });
 
     set((state) => ({
@@ -317,6 +317,69 @@ const useStore = create((set, get) => ({
     }
 
     return data.channel;
+  },
+
+  /**
+   * Modifier un salon (nom, catégorie, position)
+   */
+  updateChannel: async (channelId, updates) => {
+    const data = await apiFetch(`/channels/${channelId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+    set((state) => ({
+      channels: state.channels.map(ch => ch.id === channelId ? data.channel : ch),
+    }));
+    return data.channel;
+  },
+
+  /**
+   * Supprimer un salon
+   */
+  deleteChannel: async (channelId) => {
+    await apiFetch(`/channels/${channelId}`, { method: 'DELETE' });
+    set((state) => ({
+      channels: state.channels.filter(ch => ch.id !== channelId),
+      currentChannel: state.currentChannel?.id === channelId ? null : state.currentChannel,
+    }));
+  },
+
+  /**
+   * Récupérer les permissions d'un salon
+   */
+  fetchChannelPermissions: async (channelId) => {
+    const data = await apiFetch(`/channels/${channelId}/permissions`);
+    return data.permissions || [];
+  },
+
+  /**
+   * Définir les permissions d'un salon
+   */
+  updateChannelPermissions: async (channelId, permissions) => {
+    await apiFetch(`/channels/${channelId}/permissions`, {
+      method: 'PUT',
+      body: JSON.stringify({ permissions }),
+    });
+  },
+
+  /**
+   * Renommer une catégorie
+   */
+  renameCategory: async (serverId, oldName, newName) => {
+    await apiFetch(`/channels/categories/${serverId}/rename`, {
+      method: 'PUT',
+      body: JSON.stringify({ oldName, newName }),
+    });
+  },
+
+  /**
+   * Supprimer une catégorie
+   */
+  deleteCategory: async (serverId, category) => {
+    await apiFetch(`/channels/categories/${serverId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ category }),
+    });
   },
 
   // ===== MESSAGES =====

@@ -4,8 +4,8 @@
  * Affiche le nom du serveur, la liste des salons et un bouton pour en créer
  */
 
-import { useState } from 'react';
-import { Hash, Plus, Settings, ChevronDown, Copy, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Hash, Plus, Settings, ChevronDown, ChevronRight, Copy, Trash2 } from 'lucide-react';
 import useStore from '../../store/useStore';
 import SettingsModal from '../SettingsModal/SettingsModal';
 import ServerSettingsModal from '../ServerSettingsModal/ServerSettingsModal';
@@ -23,6 +23,7 @@ export default function ChannelSidebar() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showServerSettingsModal, setShowServerSettingsModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [collapsedCategories, setCollapsedCategories] = useState({});
 
   if (!currentServer) {
     return (
@@ -51,6 +52,22 @@ export default function ChannelSidebar() {
   };
 
   const isOwner = currentServer.owner_id === user?.id;
+
+  // Group channels by category
+  const categorizedChannels = useMemo(() => {
+    const groups = {};
+    (channels || []).forEach(ch => {
+      const cat = String(ch.category || 'GÉNÉRAL');
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(ch);
+    });
+    Object.values(groups).forEach(arr => arr.sort((a, b) => (a.position || 0) - (b.position || 0)));
+    return groups;
+  }, [channels]);
+
+  const toggleCategory = (cat) => {
+    setCollapsedCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
+  };
 
   return (
     <div className="channel-sidebar">
@@ -112,27 +129,37 @@ export default function ChannelSidebar() {
         </div>
       )}
 
-      {/* Liste des salons */}
+      {/* Liste des salons groupés par catégorie */}
       <div className="channel-list">
-        <div className="channel-category">
-          <span>SALONS TEXTUELS</span>
-          <button
-            className="channel-add-btn"
-            onClick={() => setShowCreate(true)}
-            title="Créer un salon"
-          >
-            <Plus size={16} />
-          </button>
-        </div>
+        {Object.entries(categorizedChannels).map(([category, catChannels]) => (
+          <div key={category} className="channel-category-group">
+            <div className="channel-category" onClick={() => toggleCategory(category)}>
+              {collapsedCategories[category]
+                ? <ChevronRight size={12} className="cat-chevron" />
+                : <ChevronDown size={12} className="cat-chevron" />
+              }
+              <span>{category}</span>
+              {isOwner && (
+                <button
+                  className="channel-add-btn"
+                  onClick={(e) => { e.stopPropagation(); setShowCreate(true); }}
+                  title="Créer un salon"
+                >
+                  <Plus size={16} />
+                </button>
+              )}
+            </div>
 
-        {channels.map((channel) => (
-          <div
-            key={channel.id}
-            className={`channel-item ${currentChannel?.id === channel.id ? 'active' : ''}`}
-            onClick={() => selectChannel(channel.id)}
-          >
-            <Hash size={18} className="channel-hash" />
-            <span className="channel-name">{channel.name}</span>
+            {!collapsedCategories[category] && catChannels.map((channel) => (
+              <div
+                key={channel.id}
+                className={`channel-item ${currentChannel?.id === channel.id ? 'active' : ''}`}
+                onClick={() => selectChannel(channel.id)}
+              >
+                <Hash size={18} className="channel-hash" />
+                <span className="channel-name">{channel.name}</span>
+              </div>
+            ))}
           </div>
         ))}
       </div>

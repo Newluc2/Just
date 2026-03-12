@@ -200,6 +200,18 @@ async function initialize() {
     )
   `);
 
+  // Permissions par salon (visibilité par rôle)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS channel_permissions (
+      channel_id TEXT NOT NULL,
+      role_id TEXT NOT NULL,
+      can_view INTEGER DEFAULT 1,
+      PRIMARY KEY (channel_id, role_id),
+      FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE,
+      FOREIGN KEY (role_id) REFERENCES server_roles(id) ON DELETE CASCADE
+    )
+  `);
+
   // Messages épinglés
   db.run(`
     CREATE TABLE IF NOT EXISTS pinned_messages (
@@ -261,6 +273,22 @@ function save() {
 }
 
 /**
+ * Helper : convertir les éventuels Uint8Array en string
+ * sql.js peut retourner des Uint8Array pour certains champs TEXT
+ */
+function sanitizeRow(row) {
+  const obj = {};
+  for (const [key, value] of Object.entries(row)) {
+    if (value instanceof Uint8Array) {
+      obj[key] = new TextDecoder().decode(value);
+    } else {
+      obj[key] = value;
+    }
+  }
+  return obj;
+}
+
+/**
  * Helper : exécuter une requête SELECT et retourner tous les résultats sous forme d'objets
  */
 function all(sql, params = []) {
@@ -268,7 +296,7 @@ function all(sql, params = []) {
   stmt.bind(params);
   const results = [];
   while (stmt.step()) {
-    results.push(stmt.getAsObject());
+    results.push(sanitizeRow(stmt.getAsObject()));
   }
   stmt.free();
   return results;

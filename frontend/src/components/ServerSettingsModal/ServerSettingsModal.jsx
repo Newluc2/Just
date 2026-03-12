@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Settings, Users, Shield, Plus, Trash2, X } from 'lucide-react';
+import { Settings, Users, Shield, Plus, Trash2, X, Hash, Eye, EyeOff, Edit2, Check, FolderPlus } from 'lucide-react';
 import useStore from '../../store/useStore';
 import './ServerSettingsModal.css';
 
@@ -7,6 +7,7 @@ export default function ServerSettingsModal({ onClose }) {
   const {
     currentServer,
     members,
+    channels,
     user,
     selectServer,
     updateServerSettings,
@@ -17,6 +18,13 @@ export default function ServerSettingsModal({ onClose }) {
     updateServerMemberRole,
     kickServerMember,
     createServerInvite,
+    createChannel,
+    updateChannel,
+    deleteChannel,
+    fetchChannelPermissions,
+    updateChannelPermissions,
+    renameCategory,
+    deleteCategory,
   } = useStore();
 
   const [activeTab, setActiveTab] = useState('general');
@@ -31,6 +39,17 @@ export default function ServerSettingsModal({ onClose }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Channels tab state
+  const [newChannelName, setNewChannelName] = useState('');
+  const [newChannelCategory, setNewChannelCategory] = useState('GÉNÉRAL');
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingChannel, setEditingChannel] = useState(null);
+  const [editChannelName, setEditChannelName] = useState('');
+  const [permChannel, setPermChannel] = useState(null);
+  const [channelPerms, setChannelPerms] = useState([]);
+  const [renamingCategory, setRenamingCategory] = useState(null);
+  const [renameCategoryValue, setRenameCategoryValue] = useState('');
+
   const isOwner = currentServer?.owner_id === user?.id;
 
   const roleMap = useMemo(() => {
@@ -38,6 +57,21 @@ export default function ServerSettingsModal({ onClose }) {
     roles.forEach((role) => map.set(role.id, role));
     return map;
   }, [roles]);
+
+  // Group channels by category
+  const categorizedChannels = useMemo(() => {
+    const groups = {};
+    (channels || []).forEach(ch => {
+      const cat = String(ch.category || 'GÉNÉRAL');
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(ch);
+    });
+    // Sort channels within each category by position
+    Object.values(groups).forEach(arr => arr.sort((a, b) => (a.position || 0) - (b.position || 0)));
+    return groups;
+  }, [channels]);
+
+  const categories = Object.keys(categorizedChannels);
 
   const loadRoles = async () => {
     if (!currentServer) return;
@@ -63,12 +97,13 @@ export default function ServerSettingsModal({ onClose }) {
       setSuccess(message);
       setError('');
     }
+    setTimeout(() => { setError(''); setSuccess(''); }, 3000);
   };
 
+  // ── General tab ──
   const handleSaveGeneral = async (e) => {
     e.preventDefault();
     if (!currentServer) return;
-
     try {
       await updateServerSettings(currentServer.id, {
         name: serverName,
@@ -83,7 +118,6 @@ export default function ServerSettingsModal({ onClose }) {
 
   const handleCreateInvite = async () => {
     if (!currentServer) return;
-
     try {
       const invite = await createServerInvite(currentServer.id, {
         maxUses: inviteMaxUses ? Number(inviteMaxUses) : null,
@@ -96,9 +130,9 @@ export default function ServerSettingsModal({ onClose }) {
     }
   };
 
+  // ── Roles tab ──
   const handleCreateRole = async () => {
     if (!currentServer || !newRoleName.trim()) return;
-
     try {
       await createServerRole(currentServer.id, {
         name: newRoleName.trim(),
@@ -137,6 +171,7 @@ export default function ServerSettingsModal({ onClose }) {
     }
   };
 
+  // ── Members tab ──
   const handleMemberRoleChange = async (memberId, roleId) => {
     if (!currentServer) return;
     try {
@@ -159,6 +194,130 @@ export default function ServerSettingsModal({ onClose }) {
     }
   };
 
+  // ── Channels tab ──
+  const handleCreateChannel = async () => {
+    if (!newChannelName.trim()) return;
+    try {
+      await createChannel(newChannelName, newChannelCategory);
+      setNewChannelName('');
+      await refreshServer();
+      showToast('success', 'Salon créé');
+    } catch (err) {
+      showToast('error', err.message);
+    }
+  };
+
+  const handleDeleteChannel = async (channelId) => {
+    try {
+      await deleteChannel(channelId);
+      await refreshServer();
+      showToast('success', 'Salon supprimé');
+    } catch (err) {
+      showToast('error', err.message);
+    }
+  };
+
+  const handleEditChannel = async (channelId) => {
+    if (!editChannelName.trim()) return;
+    try {
+      await updateChannel(channelId, { name: editChannelName });
+      setEditingChannel(null);
+      await refreshServer();
+      showToast('success', 'Salon renommé');
+    } catch (err) {
+      showToast('error', err.message);
+    }
+  };
+
+  const handleMoveChannel = async (channelId, newCategory) => {
+    try {
+      await updateChannel(channelId, { category: newCategory });
+      await refreshServer();
+    } catch (err) {
+      showToast('error', err.message);
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    const catName = newCategoryName.trim().toUpperCase();
+    if (categories.includes(catName)) {
+      showToast('error', 'Cette catégorie existe déjà');
+      return;
+    }
+    // Create a placeholder channel in this category
+    try {
+      await createChannel('général', catName);
+      setNewCategoryName('');
+      await refreshServer();
+      showToast('success', 'Catégorie créée');
+    } catch (err) {
+      showToast('error', err.message);
+    }
+  };
+
+  const handleRenameCategory = async (oldName) => {
+    if (!renameCategoryValue.trim()) return;
+    try {
+      await renameCategory(currentServer.id, oldName, renameCategoryValue);
+      setRenamingCategory(null);
+      await refreshServer();
+      showToast('success', 'Catégorie renommée');
+    } catch (err) {
+      showToast('error', err.message);
+    }
+  };
+
+  const handleDeleteCategory = async (catName) => {
+    try {
+      await deleteCategory(currentServer.id, catName);
+      await refreshServer();
+      showToast('success', 'Catégorie supprimée, salons déplacés vers GÉNÉRAL');
+    } catch (err) {
+      showToast('error', err.message);
+    }
+  };
+
+  // ── Permissions ──
+  const openPermissions = async (channel) => {
+    setPermChannel(channel);
+    try {
+      const perms = await fetchChannelPermissions(channel.id);
+      // Build full list: one entry per role (excluding Owner)
+      const fullPerms = roles
+        .filter(r => r.name !== 'Owner')
+        .map(role => {
+          const existing = perms.find(p => p.role_id === role.id);
+          return {
+            roleId: role.id,
+            roleName: role.name,
+            roleColor: role.color,
+            canView: existing ? existing.can_view === 1 : true,
+          };
+        });
+      setChannelPerms(fullPerms);
+    } catch (err) {
+      showToast('error', err.message);
+    }
+  };
+
+  const handleTogglePerm = (roleId) => {
+    setChannelPerms(prev =>
+      prev.map(p => p.roleId === roleId ? { ...p, canView: !p.canView } : p)
+    );
+  };
+
+  const handleSavePermissions = async () => {
+    if (!permChannel) return;
+    try {
+      await updateChannelPermissions(permChannel.id, channelPerms);
+      showToast('success', `Permissions de #${permChannel.name} mises à jour`);
+      setPermChannel(null);
+    } catch (err) {
+      showToast('error', err.message);
+    }
+  };
+
   if (!currentServer || !isOwner) return null;
 
   return (
@@ -176,6 +335,9 @@ export default function ServerSettingsModal({ onClose }) {
             <button className={activeTab === 'general' ? 'active' : ''} onClick={() => setActiveTab('general')}>
               <Settings size={16} /> Général
             </button>
+            <button className={activeTab === 'channels' ? 'active' : ''} onClick={() => setActiveTab('channels')}>
+              <Hash size={16} /> Salons
+            </button>
             <button className={activeTab === 'roles' ? 'active' : ''} onClick={() => setActiveTab('roles')}>
               <Shield size={16} /> Rôles
             </button>
@@ -188,6 +350,7 @@ export default function ServerSettingsModal({ onClose }) {
             {error && <div className="settings-error">{error}</div>}
             {success && <div className="settings-success">{success}</div>}
 
+            {/* ── GÉNÉRAL ── */}
             {activeTab === 'general' && (
               <div className="settings-section">
                 <form onSubmit={handleSaveGeneral}>
@@ -241,6 +404,174 @@ export default function ServerSettingsModal({ onClose }) {
               </div>
             )}
 
+            {/* ── SALONS ── */}
+            {activeTab === 'channels' && (
+              <div className="settings-section">
+                {/* Créer une catégorie */}
+                <h3>Catégories</h3>
+                <div className="channel-create-row">
+                  <input
+                    type="text"
+                    placeholder="Nouvelle catégorie"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                  />
+                  <button type="button" className="btn-primary" onClick={handleCreateCategory}>
+                    <FolderPlus size={14} /> Créer
+                  </button>
+                </div>
+
+                {/* Créer un salon */}
+                <h3>Nouveau salon</h3>
+                <div className="channel-create-row">
+                  <input
+                    type="text"
+                    placeholder="nom-du-salon"
+                    value={newChannelName}
+                    onChange={(e) => setNewChannelName(e.target.value)}
+                  />
+                  <select
+                    value={newChannelCategory}
+                    onChange={(e) => setNewChannelCategory(e.target.value)}
+                  >
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                  <button type="button" className="btn-primary" onClick={handleCreateChannel}>
+                    <Plus size={14} /> Créer
+                  </button>
+                </div>
+
+                {/* Panneau des permissions */}
+                {permChannel && (
+                  <div className="perm-panel">
+                    <div className="perm-panel-header">
+                      <h3>Permissions — #{permChannel.name}</h3>
+                      <button className="perm-close" onClick={() => setPermChannel(null)}><X size={16} /></button>
+                    </div>
+                    <p className="perm-hint">Le Owner voit toujours tous les salons.</p>
+                    <div className="perm-list">
+                      {channelPerms.map(p => (
+                        <div key={p.roleId} className="perm-row">
+                          <div className="perm-role">
+                            <span className="role-dot" style={{ background: p.roleColor }} />
+                            <span>{p.roleName}</span>
+                          </div>
+                          <button
+                            className={`perm-toggle ${p.canView ? 'allowed' : 'denied'}`}
+                            onClick={() => handleTogglePerm(p.roleId)}
+                            title={p.canView ? 'Visible' : 'Masqué'}
+                          >
+                            {p.canView ? <Eye size={16} /> : <EyeOff size={16} />}
+                            {p.canView ? 'Visible' : 'Masqué'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <button type="button" className="btn-primary" onClick={handleSavePermissions}>
+                      Enregistrer les permissions
+                    </button>
+                  </div>
+                )}
+
+                {/* Liste des catégories + salons */}
+                <div className="channels-management">
+                  {categories.map(cat => (
+                    <div key={cat} className="cat-group">
+                      <div className="cat-header">
+                        {renamingCategory === cat ? (
+                          <div className="cat-rename-row">
+                            <input
+                              autoFocus
+                              value={renameCategoryValue}
+                              onChange={(e) => setRenameCategoryValue(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleRenameCategory(cat)}
+                            />
+                            <button className="cat-rename-ok" onClick={() => handleRenameCategory(cat)}>
+                              <Check size={14} />
+                            </button>
+                            <button className="cat-rename-cancel" onClick={() => setRenamingCategory(null)}>
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <span className="cat-name">{cat}</span>
+                            <div className="cat-actions">
+                              <button
+                                title="Renommer"
+                                onClick={() => { setRenamingCategory(cat); setRenameCategoryValue(cat); }}
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              {cat !== 'GÉNÉRAL' && (
+                                <button title="Supprimer la catégorie" className="danger-sm" onClick={() => handleDeleteCategory(cat)}>
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {categorizedChannels[cat].map(ch => (
+                        <div key={ch.id} className="ch-row">
+                          <div className="ch-left">
+                            <Hash size={15} />
+                            {editingChannel === ch.id ? (
+                              <input
+                                autoFocus
+                                className="ch-edit-input"
+                                value={editChannelName}
+                                onChange={(e) => setEditChannelName(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleEditChannel(ch.id)}
+                              />
+                            ) : (
+                              <span>{ch.name}</span>
+                            )}
+                          </div>
+                          <div className="ch-actions">
+                            {/* Déplacer vers une autre catégorie */}
+                            {categories.length > 1 && (
+                              <select
+                                className="ch-move-select"
+                                value={ch.category || 'GÉNÉRAL'}
+                                onChange={(e) => handleMoveChannel(ch.id, e.target.value)}
+                              >
+                                {categories.map(c => (
+                                  <option key={c} value={c}>{c}</option>
+                                ))}
+                              </select>
+                            )}
+                            {/* Permissions */}
+                            <button title="Permissions" onClick={() => openPermissions(ch)}>
+                              <Shield size={13} />
+                            </button>
+                            {/* Renommer */}
+                            {editingChannel === ch.id ? (
+                              <button onClick={() => handleEditChannel(ch.id)}>
+                                <Check size={13} />
+                              </button>
+                            ) : (
+                              <button title="Renommer" onClick={() => { setEditingChannel(ch.id); setEditChannelName(ch.name); }}>
+                                <Edit2 size={13} />
+                              </button>
+                            )}
+                            {/* Supprimer */}
+                            <button className="danger-sm" title="Supprimer" onClick={() => handleDeleteChannel(ch.id)}>
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── RÔLES ── */}
             {activeTab === 'roles' && (
               <div className="settings-section">
                 <div className="role-create-row">
@@ -285,6 +616,7 @@ export default function ServerSettingsModal({ onClose }) {
               </div>
             )}
 
+            {/* ── MEMBRES ── */}
             {activeTab === 'members' && (
               <div className="settings-section">
                 <div className="members-list">

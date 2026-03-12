@@ -147,8 +147,23 @@ router.get('/:id', authMiddleware, (req, res) => {
       return res.status(404).json({ error: 'Serveur non trouvé' });
     }
 
-    // Récupérer les salons
-    const channels = db.all('SELECT * FROM channels WHERE server_id = ? ORDER BY created_at ASC', [id]);
+    // Récupérer les salons (ordonnés par catégorie puis position)
+    const allChannels = db.all('SELECT * FROM channels WHERE server_id = ? ORDER BY category ASC, position ASC, created_at ASC', [id]);
+
+    // Filtrer les salons par permissions du rôle (owner voit tout)
+    let channels;
+    if (server.owner_id === req.user.id) {
+      channels = allChannels;
+    } else {
+      channels = allChannels.filter(ch => {
+        if (!membership.role_id) return true;
+        const perm = db.get(
+          'SELECT can_view FROM channel_permissions WHERE channel_id = ? AND role_id = ?',
+          [ch.id, membership.role_id]
+        );
+        return !perm || perm.can_view === 1;
+      });
+    }
 
     const members = getServerMembers(id);
 
