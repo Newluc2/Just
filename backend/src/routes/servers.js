@@ -198,6 +198,13 @@ router.post('/join', authMiddleware, (req, res) => {
       return res.status(400).json({ error: 'Vous êtes déjà membre de ce serveur' });
     }
 
+    // Vérifier si l'utilisateur est banni
+    const banned = db.get('SELECT * FROM server_bans WHERE server_id = ? AND user_id = ?',
+      [server.id, req.user.id]);
+    if (banned) {
+      return res.status(403).json({ error: 'Vous êtes banni de ce serveur' });
+    }
+
     const memberRole = db.get(
       'SELECT id FROM server_roles WHERE server_id = ? ORDER BY position ASC LIMIT 1',
       [server.id]
@@ -580,6 +587,109 @@ router.post('/:id/invites', authMiddleware, (req, res) => {
     });
   } catch (err) {
     console.error('Create server invite error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ═══ BANS ═══
+
+/**
+ * GET /api/servers/:id/bans
+ * Liste des utilisateurs bannis (owner)
+ */
+router.get('/:id/bans', authMiddleware, (req, res) => {
+  try {
+    const { id } = req.params;
+    const server = requireServerOwner(id, req.user.id);
+    if (!server) {
+      return res.status(403).json({ error: 'Seul le propriétaire peut voir les bannissements' });
+    }
+
+    const bans = db.all(
+      `SELECT sb.*, u.username, u.avatar
+       FROM server_bans sb
+       JOIN users u ON u.id = sb.user_id
+       WHERE sb.server_id = ?
+       ORDER BY sb.banned_at DESC`,
+      [id]
+    );
+
+    res.json({ bans });
+  } catch (err) {
+    console.error('Get bans error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * POST /api/servers/:id/bans/:userId
+ * Bannir un utilisateur (owner) — le kick + empêche de rejoindre
+ */
+router.post('/:id/bans/:userId', authMiddleware, (req, res) => {
+  try {
+    const { id, userId } = req.params;
+    const { reason } = req.body;
+
+    const server = requireServerOwner(id, req.user.id);
+    if (!server) {
+      return res.status(403).json({ error: 'Seul le propriétaire peut bannir des membres' });
+    }
+
+    if (userId === req.user.id) {
+      return res.status(400).json({ error: 'Vous ne pouvez pas vous bannir vous-même' });
+    }
+
+    // Vérifier que l'utilisateur existe
+    const targetUser = db.get('SELECT id, username FROM users WHERE id = ?', [userId]);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    // Vérifier s'il est déjà banni
+    const existing = db.get('SELECT * FROM server_bans WHERE server_id = ? AND user_id = ?', [id, userId]);
+    if (existing) {
+      return res.status(400).json({ error: 'Cet utilisateur est déjà banni' });
+    }
+
+    // Ajouter le ban
+    db.run(
+      'INSERT INTO server_bans (server_id, user_id, banned_by, reason) VALUES (?, ?, ?, ?)',
+      [id, userId, req.user.id, reason || null]
+    );
+
+    // Retirer le membre du serveur
+    db.run('DELETE FROM server_members WHERE server_id = ? AND user_id = ?', [id, userId]);
+
+    res.json({ message: `${targetUser.username} a été banni` });
+  } catch (err) {
+    console.error('Ban user error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * DELETE /api/servers/:id/bans/:userId
+ * Débannir un utilisateur (owner)
+ */
+router.delete('/:id/bans/:userId', authMiddleware, (req, res) => {
+  try {
+    const { id, userId } = req.params;
+
+    const server = requireServerOwner(id, req.user.id);
+    if (!server) {
+      return res.status(403).json({ error: 'Seul le propriétaire peut débannir des membres' });
+    }
+
+    const ban = db.get('SELECT * FROM server_bans WHERE server_id = ? AND user_id = ?', [id, userId]);
+    if (!ban) {
+      return res.status(404).json({ error: 'Cet utilisateur n\'est pas banni' });
+    }
+
+    db.run('DELETE FROM server_bans WHERE server_id = ? AND user_id = ?', [id, userId]);
+
+    res.json({ message: 'Utilisateur débanni' });
+  } catch (err) {
+    console.error('Unban user error:', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });

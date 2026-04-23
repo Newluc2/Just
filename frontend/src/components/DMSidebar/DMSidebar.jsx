@@ -10,7 +10,7 @@ import useStore from '../../store/useStore';
 import SettingsModal from '../SettingsModal/SettingsModal';
 import './DMSidebar.css';
 
-export default function DMSidebar() {
+export default function DMSidebar({ mobileView, setMobileView, isMobileDevice }) {
   const {
     user, dmConversations, currentDM,
     fetchDMConversations, selectDM, openDMWithUser,
@@ -55,6 +55,10 @@ export default function DMSidebar() {
     setSearching(false);
     setSearch('');
     setSearchResults([]);
+    // Auto-redirect to chat on mobile
+    if (isMobileDevice && setMobileView) {
+      setMobileView('chat');
+    }
   };
 
   /** Obtenir le nom à afficher pour une conversation */
@@ -144,7 +148,13 @@ export default function DMSidebar() {
             <button
               key={conv.id}
               className={`dm-item ${isActive ? 'active' : ''}`}
-              onClick={() => selectDM(conv)}
+              onClick={() => {
+                selectDM(conv);
+                // Auto-redirect to chat on mobile
+                if (isMobileDevice && setMobileView) {
+                  setMobileView('chat');
+                }
+              }}
             >
               <div className="dm-avatar" style={{ background: getColor(name) }}>
                 {getInitial(name)}

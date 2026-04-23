@@ -10,11 +10,19 @@ import { Plus, LogOut, Compass } from 'lucide-react';
 import useStore from '../../store/useStore';
 import './ServerSidebar.css';
 
-export default function ServerSidebar() {
+export default function ServerSidebar({ isMobileDevice, mobileView, setMobileView }) {
   const { servers, currentServer, selectServer, createServer, joinServer, logout, user, activeView, setActiveView } = useStore();
   const [showModal, setShowModal] = useState(null); // 'create' | 'join' | null
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState('');
+
+  const handleLogoClick = () => {
+    setActiveView('dm');
+    // Sur mobile, afficher automatiquement la liste des MP
+    if (isMobileDevice && setMobileView) {
+      setMobileView('dms');
+    }
+  };
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -66,7 +74,7 @@ export default function ServerSidebar() {
           />
           <div
             className={`server-icon home-icon ${activeView === 'dm' ? 'active' : ''}`}
-            onClick={() => setActiveView('dm')}
+            onClick={handleLogoClick}
             title="Messages Privés"
           >
             <span>J</span>

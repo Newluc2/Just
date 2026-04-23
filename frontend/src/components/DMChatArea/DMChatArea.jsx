@@ -15,6 +15,7 @@ import {
 import useStore from '../../store/useStore';
 import { getSocket } from '../../api/socket';
 import { initiateCall } from '../../api/voiceCall';
+import RichMessageDisplay from '../RichMessageDisplay/RichMessageDisplay';
 import '../ChatArea/ChatArea.css';
 import './DMChatArea.css';
 
@@ -200,9 +201,7 @@ export default function DMChatArea() {
 
   const renderContent = (content) => {
     if (!content) return null;
-    return content.split(/(@[a-zA-Z0-9_]+)/g).map((part, i) =>
-      /^@[a-zA-Z0-9_]+$/.test(part) ? <span key={i} className="mention-tag">{part}</span> : part
-    );
+    return <RichMessageDisplay content={content} />;
   };
 
   // Le backend envoie déjà des réactions groupées : [{emoji, count, users:[userId,...]}]
@@ -317,15 +316,37 @@ export default function DMChatArea() {
                 {/* Pièces jointes */}
                 {msg.attachments?.length > 0 && (
                   <div className="attachments">
-                    {msg.attachments.map((att, i) => (
-                      att.mime_type?.startsWith('image/') || att.mimetype?.startsWith('image/') ? (
-                        <img key={i} src={att.url} alt={att.original_name || att.originalName} className="attach-image" />
-                      ) : (
-                        <a key={i} href={att.url} download={att.original_name || att.originalName} className="attach-file">
-                          📎 {att.original_name || att.originalName || 'Fichier'}
-                        </a>
-                      )
-                    ))}
+                    {msg.attachments.map((att, i) => {
+                      // Formats image supportés
+                      const mimeType = att.mime_type || att.mimetype || '';
+                      const fileName = att.original_name || att.originalName || '';
+                      const isImage = mimeType.startsWith('image/') || 
+                                     /\.(png|jpg|jpeg|gif|webp|svg|bmp|ico|heic)$/i.test(fileName);
+                      
+                      if (isImage) {
+                        return (
+                          <div key={i} className="attach-image-wrapper">
+                            <img 
+                              src={att.url} 
+                              alt={fileName} 
+                              className="attach-image"
+                              title={fileName}
+                            />
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <a 
+                            key={i} 
+                            href={att.url} 
+                            download={fileName} 
+                            className="attach-file"
+                          >
+                            📎 {fileName || 'Fichier'}
+                          </a>
+                        );
+                      }
+                    })}
                   </div>
                 )}
 

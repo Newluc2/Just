@@ -62,7 +62,7 @@ router.post('/', authMiddleware, (req, res) => {
 
 /**
  * GET /api/channels/categories/:serverId
- * Lister les catégories d'un serveur
+ * Lister les catégories d'un serveur (ordonnées par position)
  */
 router.get('/categories/:serverId', authMiddleware, (req, res) => {
   try {
@@ -74,14 +74,64 @@ router.get('/categories/:serverId', authMiddleware, (req, res) => {
       return res.status(403).json({ error: 'Accès refusé' });
     }
 
-    const categories = db.all(
-      'SELECT DISTINCT category FROM channels WHERE server_id = ? ORDER BY category ASC',
+    // Get distinct categories from channels
+    const rawCats = db.all(
+      'SELECT DISTINCT category FROM channels WHERE server_id = ?',
       [serverId]
     );
 
-    res.json({ categories: categories.map(c => c.category) });
+    // Get stored positions
+    const positions = db.all(
+      'SELECT category, position FROM category_positions WHERE server_id = ?',
+      [serverId]
+    );
+    const posMap = {};
+    positions.forEach(p => { posMap[p.category] = p.position; });
+
+    // Sort categories by their stored position (unpositioned get a high default)
+    const sorted = rawCats
+      .map(c => c.category)
+      .sort((a, b) => (posMap[a] ?? 9999) - (posMap[b] ?? 9999));
+
+    res.json({ categories: sorted });
   } catch (err) {
     console.error('Get categories error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * PUT /api/channels/categories/:serverId/reorder
+ * Réordonner les catégories d'un serveur
+ * Body: { categories: ['CAT1', 'CAT2', ...] }
+ */
+router.put('/categories/:serverId/reorder', authMiddleware, (req, res) => {
+  try {
+    const { serverId } = req.params;
+    const { categories } = req.body;
+
+    const server = db.get('SELECT * FROM servers WHERE id = ? AND owner_id = ?',
+      [serverId, req.user.id]);
+    if (!server) {
+      return res.status(403).json({ error: 'Seul le propriétaire peut réordonner les catégories' });
+    }
+
+    if (!Array.isArray(categories)) {
+      return res.status(400).json({ error: 'categories doit être un tableau' });
+    }
+
+    // Delete old positions and insert new ones
+    db.run('DELETE FROM category_positions WHERE server_id = ?', [serverId]);
+    categories.forEach((cat, index) => {
+      db.run(
+        'INSERT INTO category_positions (server_id, category, position) VALUES (?, ?, ?)',
+        [serverId, cat, index]
+      );
+    });
+
+    res.json({ message: 'Catégories réordonnées' });
+  } catch (err) {
+    console.error('Reorder categories error:', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
@@ -106,6 +156,10 @@ router.put('/categories/:serverId/rename', authMiddleware, (req, res) => {
     }
 
     db.run('UPDATE channels SET category = ? WHERE server_id = ? AND category = ?',
+      [newName.trim().toUpperCase(), serverId, oldName]);
+
+    // Update category_positions too
+    db.run('UPDATE category_positions SET category = ? WHERE server_id = ? AND category = ?',
       [newName.trim().toUpperCase(), serverId, oldName]);
 
     res.json({ message: 'Catégorie renommée' });
@@ -136,6 +190,10 @@ router.delete('/categories/:serverId', authMiddleware, (req, res) => {
 
     db.run('UPDATE channels SET category = ? WHERE server_id = ? AND category = ?',
       ['GÉNÉRAL', serverId, category]);
+
+    // Remove from category_positions
+    db.run('DELETE FROM category_positions WHERE server_id = ? AND category = ?',
+      [serverId, category]);
 
     res.json({ message: 'Catégorie supprimée' });
   } catch (err) {
@@ -244,6 +302,52 @@ router.get('/:serverId', authMiddleware, (req, res) => {
 });
 
 /**
+ * GET /api/channels/:channelId/my-permissions
+ * Obtenir les permissions du salon pour l'utilisateur courant
+ */
+router.get('/:channelId/my-permissions', authMiddleware, (req, res) => {
+  try {
+    const { channelId } = req.params;
+    const channel = db.get('SELECT * FROM channels WHERE id = ?', [channelId]);
+    if (!channel) return res.status(404).json({ error: 'Salon non trouvé' });
+
+    const server = db.get('SELECT * FROM servers WHERE id = ?', [channel.server_id]);
+    if (!server) return res.status(404).json({ error: 'Serveur non trouvé' });
+
+    // Le owner a toutes les permissions
+    if (server.owner_id === req.user.id) {
+      return res.json({ canView: true, canSend: true, canReact: true });
+    }
+
+    const membership = db.get('SELECT * FROM server_members WHERE server_id = ? AND user_id = ?',
+      [channel.server_id, req.user.id]);
+    if (!membership) return res.status(403).json({ error: 'Accès refusé' });
+
+    if (!membership.role_id) {
+      return res.json({ canView: true, canSend: true, canReact: true });
+    }
+
+    const perm = db.get(
+      'SELECT can_view, can_send, can_react FROM channel_permissions WHERE channel_id = ? AND role_id = ?',
+      [channelId, membership.role_id]
+    );
+
+    if (!perm) {
+      return res.json({ canView: true, canSend: true, canReact: true });
+    }
+
+    res.json({
+      canView: perm.can_view === 1,
+      canSend: (perm.can_send ?? 1) === 1,
+      canReact: (perm.can_react ?? 1) === 1,
+    });
+  } catch (err) {
+    console.error('Get my-permissions error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
  * GET /api/channels/:channelId/permissions
  * Lister les permissions d'un salon par rôle
  */
@@ -270,7 +374,7 @@ router.get('/:channelId/permissions', authMiddleware, (req, res) => {
       [channelId]
     );
 
-    res.json({ permissions });
+    res.json({ permissions: permissions.map(p => ({ ...p, can_send: p.can_send ?? 1, can_react: p.can_react ?? 1 })) });
   } catch (err) {
     console.error('Get channel permissions error:', err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -311,8 +415,8 @@ router.put('/:channelId/permissions', authMiddleware, (req, res) => {
       const role = db.get('SELECT id FROM server_roles WHERE id = ? AND server_id = ?', [perm.roleId, channel.server_id]);
       if (!role) continue;
       db.run(
-        'INSERT INTO channel_permissions (channel_id, role_id, can_view) VALUES (?, ?, ?)',
-        [channelId, perm.roleId, perm.canView ? 1 : 0]
+        'INSERT INTO channel_permissions (channel_id, role_id, can_view, can_send, can_react) VALUES (?, ?, ?, ?, ?)',
+        [channelId, perm.roleId, perm.canView ? 1 : 0, perm.canSend !== undefined ? (perm.canSend ? 1 : 0) : 1, perm.canReact !== undefined ? (perm.canReact ? 1 : 0) : 1]
       );
     }
 

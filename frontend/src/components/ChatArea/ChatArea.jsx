@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import useStore from '../../store/useStore';
 import { getSocket } from '../../api/socket';
+import RichMessageDisplay from '../RichMessageDisplay/RichMessageDisplay';
 import './ChatArea.css';
 
 /* ─── Émojis communs ─── */
@@ -76,7 +77,7 @@ export default function ChatArea() {
   const {
     currentChannel, currentServer, messages,
     sendMessage, editMessage, deleteMessage, reactToMessage,
-    user, typingUsers, members, uploadFile,
+    user, typingUsers, members, uploadFile, channelPermissions,
   } = useStore();
 
   const [input, setInput] = useState('');
@@ -203,8 +204,7 @@ export default function ChatArea() {
 
   const renderContent = (content) => {
     if (!content) return null;
-    const parts = content.split(/(@[a-zA-Z0-9_]+)/g);
-    return parts.map((part, i) => /^@[a-zA-Z0-9_]+$/.test(part) ? <span key={i} className="mention-tag">{part}</span> : part);
+    return <RichMessageDisplay content={content} />;
   };
 
   // Le backend envoie déjà des réactions groupées : [{emoji, count, users:[userId,...]}]
@@ -321,27 +321,48 @@ export default function ChatArea() {
                 )}
                 {msg.attachments?.length > 0 && (
                   <div className="attachments">
-                    {msg.attachments.map((att) => (
-                      att.mime_type?.startsWith('image/') ? (
-                        <img key={att.id} src={att.url} alt={att.original_name} className="attach-image" />
-                      ) : (
-                        <a key={att.id} href={att.url} download={att.original_name} className="attach-file">📎 {att.original_name}</a>
-                      )
-                    ))}
+                    {msg.attachments.map((att) => {
+                      // Formats image supportés
+                      const mimeType = att.mime_type || att.mimetype || '';
+                      const fileName = att.original_name || att.originalName || '';
+                      const isImage = mimeType.startsWith('image/') || 
+                                     /\.(png|jpg|jpeg|gif|webp|svg|bmp|ico|heic)$/i.test(fileName);
+                      
+                      if (isImage) {
+                        return (
+                          <div key={att.id} className="attach-image-wrapper">
+                            <img 
+                              src={att.url} 
+                              alt={fileName} 
+                              className="attach-image"
+                              title={fileName}
+                            />
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <a key={att.id} href={att.url} download={fileName} className="attach-file">
+                            📎 {fileName}
+                          </a>
+                        );
+                      }
+                    })}
                   </div>
                 )}
                 {reactionGroups.length > 0 && (
                   <div className="reactions">
                     {reactionGroups.map(({ emoji, count, users, hasMe }) => (
                       <button key={emoji} className={`reaction-pill ${hasMe ? 'reacted' : ''}`} title={users.join(', ')}
-                        onClick={(e) => { e.stopPropagation(); reactToMessage(msg.id, emoji); }}>
+                        onClick={(e) => { e.stopPropagation(); if (channelPermissions?.canReact !== false) reactToMessage(msg.id, emoji); }}>
                         {emoji} {count}
                       </button>
                     ))}
+                    {channelPermissions?.canReact !== false && (
                     <button className="reaction-add-btn" title="Ajouter une réaction"
                       onClick={(e) => { e.stopPropagation(); setEmojiTarget(emojiTarget === msg.id ? null : msg.id); }}>
                       <Smile size={14} />
                     </button>
+                    )}
                   </div>
                 )}
                 {emojiTarget === msg.id && (
@@ -351,10 +372,12 @@ export default function ChatArea() {
 
               {/* Toolbar hover */}
               <div className="message-toolbar">
+                {channelPermissions?.canReact !== false && (
                 <button className="toolbar-btn" title="Réagir"
                   onClick={(e) => { e.stopPropagation(); setEmojiTarget(emojiTarget === msg.id ? null : msg.id); }}>
                   <Smile size={16} />
                 </button>
+                )}
                 <button className="toolbar-btn" title="Répondre"
                   onClick={(e) => { e.stopPropagation(); setReplyTo(msg); inputRef.current?.focus(); }}>
                   <Reply size={16} />
@@ -415,6 +438,15 @@ export default function ChatArea() {
             ))}
           </div>
         )}
+        {channelPermissions === null ? (
+          <div className="chat-input-disabled">
+            <span>Chargement des permissions…</span>
+          </div>
+        ) : channelPermissions?.canSend === false ? (
+          <div className="chat-input-disabled">
+            <span>Vous n'avez pas la permission d'envoyer des messages dans ce salon.</span>
+          </div>
+        ) : (
         <form onSubmit={handleSend} className="chat-input-form">
           <button type="button" className="attach-btn" title="Joindre un fichier" onClick={() => fileInputRef.current?.click()}>
             <Paperclip size={20} />
@@ -426,6 +458,7 @@ export default function ChatArea() {
             <Send size={20} />
           </button>
         </form>
+        )}
       </div>
 
       {/* Context menu */}

@@ -235,3 +235,100 @@
   text-align: center;
   flex-shrink: 0;
 }
+
+/* ── Mobile Responsive ── */
+@media (max-width: 767px) {
+  .dm-sidebar {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    border-right: none;
+    background: var(--bg-secondary);
+    position: relative;
+    top: auto;
+    left: auto;
+    z-index: auto;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dm-header {
+    padding: 14px 16px;
+    background: linear-gradient(180deg, var(--bg-secondary) 0%, rgba(0,0,0,0.1) 100%);
+    border-bottom: 2px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .dm-header h3 {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .dm-new-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .dm-list {
+    flex: 1;
+    padding: 8px 0;
+    overflow-y: auto;
+  }
+
+  .dm-conversation-item {
+    padding: 8px 12px;
+    margin: 2px 8px;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+
+  .dm-conversation-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .dm-conversation-item.active {
+    background: var(--accent);
+    color: white;
+  }
+
+  .dm-username {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .dm-preview {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .dm-unread-badge {
+    font-size: 12px;
+  }
+}
+
+/* User avatar styles */
+.dm-sidebar .user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #5865f2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.dm-sidebar .user-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}

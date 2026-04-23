@@ -11,19 +11,42 @@ import SettingsModal from '../SettingsModal/SettingsModal';
 import ServerSettingsModal from '../ServerSettingsModal/ServerSettingsModal';
 import './ChannelSidebar.css';
 
-export default function ChannelSidebar() {
+export default function ChannelSidebar({ mobileView, setMobileView, isMobileDevice }) {
   const {
     currentServer, channels, currentChannel,
-    selectChannel, createChannel, deleteServer, leaveServer, user
+    selectChannel, createChannel, deleteServer, leaveServer, user,
+    categoryOrder
   } = useStore();
 
   const [showCreate, setShowCreate] = useState(false);
   const [channelName, setChannelName] = useState('');
+  const [createCategory, setCreateCategory] = useState('GÉNÉRAL');
   const [showSettings, setShowSettings] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showServerSettingsModal, setShowServerSettingsModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState({});
+
+  // Group channels by category (must be before any early return to respect hook rules)
+  const categorizedChannels = useMemo(() => {
+    const groups = {};
+    (channels || []).forEach(ch => {
+      const cat = String(ch.category || 'GÉNÉRAL');
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(ch);
+    });
+    Object.values(groups).forEach(arr => arr.sort((a, b) => (a.position || 0) - (b.position || 0)));
+    return groups;
+  }, [channels]);
+
+  // Sort categories using stored order
+  const sortedCategories = useMemo(() => {
+    const keys = Object.keys(categorizedChannels);
+    if (!categoryOrder || categoryOrder.length === 0) return keys;
+    const posMap = {};
+    categoryOrder.forEach((cat, i) => { posMap[cat] = i; });
+    return keys.sort((a, b) => (posMap[a] ?? 9999) - (posMap[b] ?? 9999));
+  }, [categorizedChannels, categoryOrder]);
 
   if (!currentServer) {
     return (
@@ -40,7 +63,7 @@ export default function ChannelSidebar() {
   const handleCreateChannel = async (e) => {
     e.preventDefault();
     if (!channelName.trim()) return;
-    await createChannel(channelName);
+    await createChannel(channelName, createCategory);
     setChannelName('');
     setShowCreate(false);
   };
@@ -52,18 +75,6 @@ export default function ChannelSidebar() {
   };
 
   const isOwner = currentServer.owner_id === user?.id;
-
-  // Group channels by category
-  const categorizedChannels = useMemo(() => {
-    const groups = {};
-    (channels || []).forEach(ch => {
-      const cat = String(ch.category || 'GÉNÉRAL');
-      if (!groups[cat]) groups[cat] = [];
-      groups[cat].push(ch);
-    });
-    Object.values(groups).forEach(arr => arr.sort((a, b) => (a.position || 0) - (b.position || 0)));
-    return groups;
-  }, [channels]);
 
   const toggleCategory = (cat) => {
     setCollapsedCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
@@ -131,7 +142,9 @@ export default function ChannelSidebar() {
 
       {/* Liste des salons groupés par catégorie */}
       <div className="channel-list">
-        {Object.entries(categorizedChannels).map(([category, catChannels]) => (
+        {sortedCategories.map((category) => {
+          const catChannels = categorizedChannels[category];
+          return (
           <div key={category} className="channel-category-group">
             <div className="channel-category" onClick={() => toggleCategory(category)}>
               {collapsedCategories[category]
@@ -142,7 +155,7 @@ export default function ChannelSidebar() {
               {isOwner && (
                 <button
                   className="channel-add-btn"
-                  onClick={(e) => { e.stopPropagation(); setShowCreate(true); }}
+                  onClick={(e) => { e.stopPropagation(); setCreateCategory(category); setShowCreate(true); }}
                   title="Créer un salon"
                 >
                   <Plus size={16} />
@@ -154,14 +167,21 @@ export default function ChannelSidebar() {
               <div
                 key={channel.id}
                 className={`channel-item ${currentChannel?.id === channel.id ? 'active' : ''}`}
-                onClick={() => selectChannel(channel.id)}
+                onClick={() => {
+                  selectChannel(channel.id);
+                  // Auto-redirect to chat on mobile
+                  if (isMobileDevice && setMobileView) {
+                    setMobileView('chat');
+                  }
+                }}
               >
                 <Hash size={18} className="channel-hash" />
                 <span className="channel-name">{channel.name}</span>
               </div>
             ))}
           </div>
-        ))}
+        );
+        })}
       </div>
 
       {/* Formulaire de création de salon */}

@@ -19,10 +19,12 @@ const messageRoutes = require('./routes/messages');
 const dmRoutes = require('./routes/dm');
 const inviteRoutes = require('./routes/invites');
 const userRoutes = require('./routes/users');
+const adminRoutes = require('./routes/admin');
 
 // Import de la base de données et du handler Socket.io
 const db = require('./database/db');
 const setupSocket = require('./socket/socketHandler');
+const { ipBanMiddleware } = require('./middleware/ipBan');
 
 const app = express();
 const server = http.createServer(app);
@@ -68,6 +70,9 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Middleware IP ban (avant les routes pour bloquer les IPs bannies)
+app.use(ipBanMiddleware);
+
 // Dossier pour les uploads (avatars, etc.)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
@@ -79,6 +84,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/dm', dmRoutes);
 app.use('/api/invites', inviteRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Route de santé
 app.get('/api/health', (req, res) => {

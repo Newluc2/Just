@@ -24,7 +24,7 @@ router.get('/search', (req, res) => {
     }
 
     const users = db.all(
-      `SELECT id, username FROM users
+      `SELECT id, username, display_name FROM users
        WHERE username LIKE ? AND id != ?
        LIMIT 20`,
       [`%${q.trim()}%`, req.user.id]

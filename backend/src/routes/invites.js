@@ -74,6 +74,15 @@ router.post('/:code/join', authMiddleware, (req, res) => {
       return res.status(410).json({ error: 'Invitation expirée' });
     }
 
+    // Vérifier si l'utilisateur est banni
+    const banned = db.get(
+      'SELECT * FROM server_bans WHERE server_id = ? AND user_id = ?',
+      [invite.server_id, req.user.id]
+    );
+    if (banned) {
+      return res.status(403).json({ error: 'Vous êtes banni de ce serveur' });
+    }
+
     const existing = db.get(
       'SELECT * FROM server_members WHERE server_id = ? AND user_id = ?',
       [invite.server_id, req.user.id]

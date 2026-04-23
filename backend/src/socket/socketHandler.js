@@ -16,6 +16,70 @@ const db = require('../database/db');
 // Map pour suivre les utilisateurs connectés : userId -> Set<socketId>
 const onlineUsers = new Map();
 
+// Rate limiting : userId -> { count, resetAt }
+const rateLimits = new Map();
+
+/**
+ * Vérifier le rate limit pour un utilisateur
+ * @returns true si autorisé, false si bloqué
+ */
+function checkRateLimit(userId, type = 'message') {
+  const limits = { message: { max: 10, windowMs: 10000 }, dm: { max: 8, windowMs: 10000 } };
+  const { max, windowMs } = limits[type] || limits.message;
+  const key = `${userId}:${type}`;
+  const now = Date.now();
+  const entry = rateLimits.get(key);
+
+  if (!entry || now > entry.resetAt) {
+    rateLimits.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+
+  entry.count++;
+  if (entry.count > max) return false;
+  return true;
+}
+
+/**
+ * Vérifier les permissions d'un utilisateur pour un salon
+ * Retourne { canView, canSend, canReact } — le owner a toujours tout
+ */
+function getChannelPermissions(userId, channelId) {
+  const channel = db.get('SELECT * FROM channels WHERE id = ?', [channelId]);
+  if (!channel) return { canView: false, canSend: false, canReact: false };
+
+  const server = db.get('SELECT * FROM servers WHERE id = ?', [channel.server_id]);
+  if (!server) return { canView: false, canSend: false, canReact: false };
+
+  // Le owner a toutes les permissions
+  if (server.owner_id === userId) return { canView: true, canSend: true, canReact: true };
+
+  const membership = db.get('SELECT * FROM server_members WHERE server_id = ? AND user_id = ?',
+    [channel.server_id, userId]);
+  if (!membership) return { canView: false, canSend: false, canReact: false };
+
+  // Pas de rôle = tout autorisé par défaut
+  if (!membership.role_id) return { canView: true, canSend: true, canReact: true };
+
+  const perm = db.get(
+    'SELECT can_view, can_send, can_react FROM channel_permissions WHERE channel_id = ? AND role_id = ?',
+    [channelId, membership.role_id]
+  );
+
+  // Pas de restriction = tout autorisé par défaut
+  if (!perm) return { canView: true, canSend: true, canReact: true };
+
+  return {
+    canView: perm.can_view === 1,
+    canSend: (perm.can_send ?? 1) === 1,
+    canReact: (perm.can_react ?? 1) === 1,
+  };
+}
+
+function getGlobalBan(userId) {
+  return db.get('SELECT reason FROM admin_bans WHERE user_id = ?', [userId]);
+}
+
 /**
  * Configurer les événements Socket.io
  */
@@ -29,6 +93,10 @@ function setupSocket(io) {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const globalBan = getGlobalBan(decoded.id);
+      if (globalBan) {
+        return next(new Error('Compte banni'));
+      }
       socket.user = decoded;
       next();
     } catch (err) {
@@ -39,6 +107,21 @@ function setupSocket(io) {
   io.on('connection', (socket) => {
     const userId = socket.user.id;
     console.log(`🟢 ${socket.user.username} connected (${socket.id})`);
+
+    const enforceNotBanned = () => {
+      const globalBan = getGlobalBan(userId);
+      if (!globalBan) return true;
+
+      socket.emit('account:banned', {
+        reason: globalBan.reason || 'Bannissement administratif',
+      });
+      socket.disconnect(true);
+      return false;
+    };
+
+    if (!enforceNotBanned()) {
+      return;
+    }
 
     // Ajouter l'utilisateur à la liste des connectés
     if (!onlineUsers.has(userId)) {
@@ -56,6 +139,7 @@ function setupSocket(io) {
      * Rejoindre un serveur (room Socket.io)
      */
     socket.on('server:join', (serverId) => {
+      if (!enforceNotBanned()) return;
       socket.join(`server:${serverId}`);
       console.log(`📌 ${socket.user.username} joined server ${serverId}`);
 
@@ -90,6 +174,7 @@ function setupSocket(io) {
      * Rejoindre un salon (pour recevoir les messages en temps réel)
      */
     socket.on('channel:join', (channelId) => {
+      if (!enforceNotBanned()) return;
       socket.join(`channel:${channelId}`);
       console.log(`💬 ${socket.user.username} joined channel ${channelId}`);
     });
@@ -105,9 +190,20 @@ function setupSocket(io) {
      * Envoyer un message dans un salon
      */
     socket.on('message:send', (data) => {
+      if (!enforceNotBanned()) return;
       const { channelId, content, replyTo, attachments } = data;
       if ((!content || !content.trim()) && (!attachments || !attachments.length)) return;
       if (!channelId) return;
+
+      // Rate limiting
+      if (!checkRateLimit(userId, 'message')) {
+        socket.emit('error:ratelimit', { message: 'Vous envoyez des messages trop rapidement.' });
+        return;
+      }
+
+      // Vérifier les permissions du salon
+      const perms = getChannelPermissions(userId, channelId);
+      if (!perms.canSend) return;
 
       const messageId = uuidv4();
       const now = new Date().toISOString();
@@ -123,7 +219,7 @@ function setupSocket(io) {
         for (const att of attachments) {
           db.run(
             'INSERT INTO message_attachments (id, message_id, filename, original_name, mimetype, size, url) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [uuidv4(), messageId, att.filename, att.originalName, att.mimetype, att.size, att.url]
+            [uuidv4(), messageId, att.filename, att.original_name || att.originalName, att.mime_type || att.mimetype, att.size, att.url]
           );
         }
       }
@@ -273,8 +369,16 @@ function setupSocket(io) {
      * Envoyer un message privé
      */
     socket.on('dm:send', (data) => {
-      const { conversationId, recipientId, content, replyTo } = data;
-      if (!content || !content.trim() || !conversationId) return;
+      if (!enforceNotBanned()) return;
+      const { conversationId, recipientId, content, replyTo, attachments } = data;
+      if ((!content || !content.trim()) && (!attachments || !attachments.length)) return;
+      if (!conversationId) return;
+
+      // Rate limiting
+      if (!checkRateLimit(userId, 'dm')) {
+        socket.emit('error:ratelimit', { message: 'Vous envoyez des messages trop rapidement.' });
+        return;
+      }
 
       const messageId = uuidv4();
       const now = new Date().toISOString();
@@ -282,14 +386,24 @@ function setupSocket(io) {
       // Sauvegarder en base (avec reply_to)
       db.run(
         'INSERT INTO direct_messages (id, content, sender_id, recipient_id, created_at, reply_to) VALUES (?, ?, ?, ?, ?, ?)',
-        [messageId, content.trim(), userId, recipientId, now, replyTo || null]
+        [messageId, (content || '').trim(), userId, recipientId, now, replyTo || null]
       );
+
+      // Sauvegarder les pièces jointes
+      if (attachments && attachments.length) {
+        for (const att of attachments) {
+          db.run(
+            'INSERT INTO message_attachments (id, message_id, filename, original_name, mimetype, size, url) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [uuidv4(), messageId, att.filename, att.original_name || att.originalName, att.mime_type || att.mimetype, att.size, att.url]
+          );
+        }
+      }
 
       const dmUser = db.get('SELECT username, display_name, avatar FROM users WHERE id = ?', [userId]);
 
       const message = {
         id: messageId,
-        content: content.trim(),
+        content: (content || '').trim(),
         author_id: userId,
         sender_id: userId,
         recipient_id: recipientId,
@@ -301,6 +415,7 @@ function setupSocket(io) {
         reply_to: replyTo || null,
         replied_message: null,
         reactions: [],
+        attachments: attachments || [],
       };
 
       // Récupérer le message cité si besoin
@@ -492,6 +607,27 @@ function setupSocket(io) {
      */
     socket.on('disconnect', () => {
       console.log(`🔴 ${socket.user.username} disconnected (${socket.id})`);
+
+      // Envoyer typing:stop à tous les salons/DMs que ce socket avait rejoint
+      for (const room of socket.rooms) {
+        if (room.startsWith('channel:')) {
+          const channelId = room.replace('channel:', '');
+          socket.to(room).emit('typing:update', {
+            userId,
+            username: socket.user.username,
+            channelId,
+            isTyping: false,
+          });
+        } else if (room.startsWith('dm:')) {
+          const conversationId = room.replace('dm:', '');
+          socket.to(room).emit('dm:typing:update', {
+            userId,
+            username: socket.user.username,
+            conversationId,
+            isTyping: false,
+          });
+        }
+      }
 
       if (onlineUsers.has(userId)) {
         onlineUsers.get(userId).delete(socket.id);

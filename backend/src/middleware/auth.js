@@ -6,6 +6,7 @@
  */
 
 const jwt = require('jsonwebtoken');
+const db = require('../database/db');
 
 function authMiddleware(req, res, next) {
   // Récupérer le token du header Authorization
@@ -20,6 +21,13 @@ function authMiddleware(req, res, next) {
   try {
     // Vérifier et décoder le token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Refuser l'accès aux comptes bannis globalement
+    const globalBan = db.get('SELECT user_id FROM admin_bans WHERE user_id = ?', [decoded.id]);
+    if (globalBan) {
+      return res.status(403).json({ error: 'Votre compte a été banni par un administrateur.' });
+    }
+
     req.user = decoded; // { id, username, email }
     next();
   } catch (err) {

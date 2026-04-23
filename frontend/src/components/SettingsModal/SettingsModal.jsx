@@ -4,24 +4,22 @@
  * Permet à l'utilisateur de modifier son profil (nom, email, mot de passe).
  */
 
-import { useState, useRef } from 'react';
-import { X, User, Lock, Save, Palette, Camera } from 'lucide-react';
+import { useState } from 'react';
+import { X, User, Lock, Save, Palette } from 'lucide-react';
 import useStore from '../../store/useStore';
 import './SettingsModal.css';
 
 export default function SettingsModal({ onClose }) {
-  const { user, updateProfile, uploadAvatar, logout, theme, setTheme } = useStore();
+  const { user, updateProfile, logout, theme, setTheme } = useStore();
 
   const [tab, setTab]               = useState('profile');
   const [username, setUsername]     = useState(user?.username || '');
-  const [displayName, setDisplayName] = useState(user?.display_name || '');
   const [email, setEmail]           = useState(user?.email || '');
   const [currentPwd, setCurrentPwd] = useState('');
   const [newPwd, setNewPwd]         = useState('');
   const [confirmPwd, setConfirmPwd] = useState('');
   const [saving, setSaving]         = useState(false);
-  const [message, setMessage]       = useState(null);
-  const avatarInputRef              = useRef(null);
+  const [message, setMessage]       = useState(null); // { type: 'success'|'error', text }
 
   const showMsg = (type, text) => {
     setMessage({ type, text });
@@ -33,7 +31,7 @@ export default function SettingsModal({ onClose }) {
     if (!username.trim()) return showMsg('error', 'Le nom d\'utilisateur est requis.');
     setSaving(true);
     try {
-      await updateProfile({ username: username.trim(), email: email.trim(), display_name: displayName.trim() || null });
+      await updateProfile({ username: username.trim(), email: email.trim() });
       showMsg('success', 'Profil mis à jour !');
     } catch (err) {
       showMsg('error', err.message || 'Erreur lors de la mise à jour.');
@@ -64,21 +62,6 @@ export default function SettingsModal({ onClose }) {
     let h = 0;
     for (let i = 0; i < (name || '').length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
     return colors[Math.abs(h) % colors.length];
-  };
-
-  const handleAvatarChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = '';
-    setSaving(true);
-    try {
-      await uploadAvatar(file);
-      showMsg('success', 'Photo de profil mise à jour !');
-    } catch (err) {
-      showMsg('error', err.message || 'Erreur lors de l\'upload.');
-    } finally {
-      setSaving(false);
-    }
   };
 
   const THEMES = [
@@ -116,34 +99,14 @@ export default function SettingsModal({ onClose }) {
         {/* Avatar + pseudo */}
         <div className="settings-profile-banner">
           <div
-            className="settings-avatar-wrapper"
-            onClick={() => avatarInputRef.current?.click()}
-            title="Changer la photo de profil"
+            className="settings-avatar"
+            style={{ background: getAvatarColor(user?.username) }}
           >
-            {user?.avatar ? (
-              <img src={user.avatar} alt="avatar" className="settings-avatar-img" />
-            ) : (
-              <div
-                className="settings-avatar"
-                style={{ background: getAvatarColor(user?.username) }}
-              >
-                {(user?.username || '?').charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div className="settings-avatar-overlay">
-              <Camera size={18} />
-            </div>
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/gif,image/webp"
-              style={{ display: 'none' }}
-              onChange={handleAvatarChange}
-            />
+            {(user?.username || '?').charAt(0).toUpperCase()}
           </div>
           <div>
-            <div className="settings-username">{user?.display_name || user?.username}</div>
-            <div className="settings-email">{user?.username} &middot; {user?.email}</div>
+            <div className="settings-username">{user?.username}</div>
+            <div className="settings-email">{user?.email}</div>
           </div>
         </div>
 
@@ -186,17 +149,6 @@ export default function SettingsModal({ onClose }) {
                   onChange={e => setUsername(e.target.value)}
                   maxLength={32}
                 />
-              </label>
-              <label>
-                Nom d'affichage
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={e => setDisplayName(e.target.value)}
-                  placeholder={username || 'Nom affiché dans les conversations'}
-                  maxLength={32}
-                />
-                <span className="settings-hint">Les autres te verront sous ce nom. Laisse vide pour utiliser ton nom d'utilisateur.</span>
               </label>
               <label>
                 Adresse e-mail

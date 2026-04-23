@@ -1,0 +1,67 @@
+.rich-message {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.message-link {
+  color: #5865f2;
+  text-decoration: none;
+  transition: all 0.2s;
+  border-radius: 3px;
+  padding: 2px 4px;
+  margin: 0 2px;
+}
+
+.message-link:hover {
+  color: #4752c4;
+  text-decoration: underline;
+  background: rgba(88, 101, 242, 0.1);
+}
+
+.message-link:visited {
+  color: #7289da;
+}
+
+.message-invite-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, rgba(88, 101, 242, 0.15), rgba(88, 101, 242, 0.05));
+  border: 1px solid rgba(88, 101, 242, 0.3);
+  border-radius: 12px;
+  padding: 3px 8px;
+  color: #5865f2;
+  font-weight: 500;
+  font-size: 0.95em;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin: 0 2px;
+  vertical-align: baseline;
+}
+
+.message-invite-badge:hover {
+  background: linear-gradient(135deg, rgba(88, 101, 242, 0.25), rgba(88, 101, 242, 0.15));
+  border-color: rgba(88, 101, 242, 0.5);
+  transform: scale(1.02);
+}
+
+.message-invite-badge:active {
+  transform: scale(0.98);
+}
+
+.invite-icon {
+  font-size: 0.9em;
+  opacity: 0.8;
+}
+
+@media (max-width: 480px) {
+  .message-invite-badge {
+    padding: 2px 6px;
+    font-size: 0.9em;
+  }
+
+  .message-link {
+    padding: 1px 3px;
+    margin: 0 1px;
+  }
+}

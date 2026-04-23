@@ -240,10 +240,76 @@ async function initialize() {
   try { db.run('ALTER TABLE direct_messages ADD COLUMN edited_at DATETIME DEFAULT NULL'); } catch(e) {}
   try { db.run('ALTER TABLE direct_messages ADD COLUMN reply_to TEXT DEFAULT NULL'); } catch(e) {}
 
+  // Migrations channel_permissions : nouvelles colonnes
+  try { db.run('ALTER TABLE channel_permissions ADD COLUMN can_send INTEGER DEFAULT 1'); } catch(e) {}
+  try { db.run('ALTER TABLE channel_permissions ADD COLUMN can_react INTEGER DEFAULT 1'); } catch(e) {}
+
+  // Table des positions de catégories
+  db.run(`
+    CREATE TABLE IF NOT EXISTS category_positions (
+      server_id TEXT NOT NULL,
+      category TEXT NOT NULL,
+      position INTEGER DEFAULT 0,
+      PRIMARY KEY (server_id, category),
+      FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Table des bannissements par serveur
+  db.run(`
+    CREATE TABLE IF NOT EXISTS server_bans (
+      server_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      banned_by TEXT NOT NULL,
+      reason TEXT DEFAULT NULL,
+      banned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (server_id, user_id),
+      FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (banned_by) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Table des bannissements globaux (admin)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS admin_bans (
+      user_id TEXT PRIMARY KEY,
+      banned_by TEXT NOT NULL,
+      reason TEXT DEFAULT NULL,
+      banned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
   // Migrations users : custom status + avatar_url + display_name
   try { db.run('ALTER TABLE users ADD COLUMN custom_status TEXT DEFAULT NULL'); } catch(e) {}
   try { db.run('ALTER TABLE users ADD COLUMN banner_color TEXT DEFAULT \'#5865f2\''); } catch(e) {}
   try { db.run('ALTER TABLE users ADD COLUMN display_name TEXT DEFAULT NULL'); } catch(e) {}
+  try { db.run('ALTER TABLE users ADD COLUMN last_ip TEXT DEFAULT NULL'); } catch(e) {}
+
+  // Table des IP bannies (ban par IP)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS ip_bans (
+      ip_address TEXT PRIMARY KEY,
+      banned_by TEXT DEFAULT 'admin',
+      reason TEXT DEFAULT NULL,
+      banned_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Table des logs d'accès (tentatives depuis IPs bannies, etc.)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS access_logs (
+      id TEXT PRIMARY KEY,
+      ip_address TEXT NOT NULL,
+      user_id TEXT DEFAULT NULL,
+      action TEXT NOT NULL,
+      endpoint TEXT DEFAULT NULL,
+      blocked INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
 
   // Sauvegarder sur disque
   save();

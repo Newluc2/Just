@@ -17,6 +17,7 @@ import DMSidebar from './components/DMSidebar/DMSidebar';
 import DMChatArea from './components/DMChatArea/DMChatArea';
 import UserProfilePopover from './components/UserProfilePopover/UserProfilePopover';
 import VoiceCallUI from './components/VoiceCall/VoiceCallUI';
+import AdminPage from './pages/AdminPage';
 import {
   requestPermission,
   notifyNewMessage,
@@ -25,6 +26,8 @@ import {
 import './App.css';
 
 export default function App() {
+  const isAdminPath = window.location.pathname === '/admin' || window.location.pathname.startsWith('/admin/');
+
   const {
     isAuthenticated, restoreSession, fetchServers,
     addMessage, setMembers, setMemberOnline, setTypingUser,
@@ -33,11 +36,28 @@ export default function App() {
     theme, updateMessage, removeMessage, updateMessageReactions,
   } = useStore();
   const [loading, setLoading] = useState(true);
+  const [isMobileDevice, setIsMobileDevice] = useState(window.innerWidth < 768);
+  const [mobileView, setMobileView] = useState(window.innerWidth < 768 ? 'dms' : 'chat'); // 'chat' | 'channels' | 'dms'
+
+  if (isAdminPath) {
+    return <AdminPage />;
+  }
 
   // Appliquer le thème au démarrage
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Détecter les changements de taille d'écran (mobile/desktop)
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobileDevice(mobile);
+      if (!mobile) setMobileView('chat'); // Reset to chat on desktop
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const extractInviteCodeFromPath = () => {
     const match = window.location.pathname.match(/^\/([A-Za-z0-9]{8,32})\/?$/);
@@ -217,6 +237,16 @@ export default function App() {
         socket.on('message:reactions', ({ messageId, reactions }) => {
           updateMessageReactions(messageId, reactions);
         });
+
+        // Rate limit error
+        socket.on('error:ratelimit', ({ message }) => {
+          alert(message);
+        });
+
+        socket.on('account:banned', ({ reason }) => {
+          alert(`Compte banni: ${reason || 'Bannissement administratif'}`);
+          useStore.getState().logout();
+        });
       }
     }, 100);
 
@@ -240,6 +270,8 @@ export default function App() {
         socket.off('message:edited');
         socket.off('message:deleted');
         socket.off('message:reactions');
+        socket.off('error:ratelimit');
+        socket.off('account:banned');
       }
     };
   }, [isAuthenticated]);
@@ -261,36 +293,115 @@ export default function App() {
 
   // Interface principale (layout Discord-like)
   return (
-    <div className="app-layout">
-      <ServerSidebar />
-      {activeView === 'dm' ? (
-        <>
-          <DMSidebar />
-          <DMChatArea />
-        </>
-      ) : (
-        <>
-          <ChannelSidebar />
-          <ChatArea />
-          {currentServer && <MemberList />}
-        </>
-      )}
+    <>
+      <div className="app-layout">
+        <ServerSidebar isMobileDevice={isMobileDevice} mobileView={mobileView} setMobileView={setMobileView} />
+        {activeView === 'dm' ? (
+          <>
+            {/* DMSidebar : visible en desktop, overlay en mobile */}
+            {!isMobileDevice && <DMSidebar mobileView={mobileView} setMobileView={setMobileView} isMobileDevice={isMobileDevice} />}
+            {isMobileDevice && mobileView === 'dms' && (
+              <div className="mobile-sidebar-overlay">
+                <DMSidebar mobileView={mobileView} setMobileView={setMobileView} isMobileDevice={isMobileDevice} />
+              </div>
+            )}
+            {/* Sur mobile: DMChatArea visible seulement si mobileView === 'chat' */}
+            {!isMobileDevice || mobileView === 'chat' ? <DMChatArea /> : null}
+          </>
+        ) : (
+          <>
+            {/* ChannelSidebar : visible en desktop, overlay en mobile */}
+            {!isMobileDevice && <ChannelSidebar mobileView={mobileView} setMobileView={setMobileView} isMobileDevice={isMobileDevice} />}
+            {isMobileDevice && mobileView === 'channels' && (
+              <div className="mobile-sidebar-overlay">
+                <ChannelSidebar mobileView={mobileView} setMobileView={setMobileView} isMobileDevice={isMobileDevice} />
+              </div>
+            )}
+            {/* Sur mobile: ChatArea visible seulement si mobileView === 'chat' */}
+            {!isMobileDevice || mobileView === 'chat' ? <ChatArea /> : null}
+            {/* MemberList : visible en desktop, overlay en mobile */}
+            {!isMobileDevice && currentServer && <MemberList />}
+            {isMobileDevice && mobileView === 'members' && currentServer && (
+              <div className="mobile-sidebar-overlay">
+                <MemberList />
+              </div>
+            )}
+          </>
+        )}
 
-      {/* Popover de profil */}
-      {profilePopover && (
-        <UserProfilePopover
-          member={profilePopover.member}
-          position={profilePopover.position}
-          onClose={hideProfilePopover}
-          onStartDM={async (memberId) => {
-            hideProfilePopover();
-            await openDMWithUser(memberId);
-          }}
-        />
-      )}
+        {/* Popover de profil */}
+        {profilePopover && (
+          <UserProfilePopover
+            member={profilePopover.member}
+            position={profilePopover.position}
+            onClose={hideProfilePopover}
+            onStartDM={async (memberId) => {
+              hideProfilePopover();
+              await openDMWithUser(memberId);
+            }}
+          />
+        )}
 
-      {/* Bannière d'appel vocal (appel entrant / sortant / connecté) */}
-      <VoiceCallUI currentUserId={useStore.getState().user?.id} />
-    </div>
+        {/* Bannière d'appel vocal (appel entrant / sortant / connecté) */}
+        <VoiceCallUI currentUserId={useStore.getState().user?.id} />
+      </div>
+
+      {/* Onglets de navigation mobile (en bas) - HORS de app-layout */}
+      {isMobileDevice && (
+        <div className="mobile-tabs">
+          {/* En serveur: afficher Canaux, Chat, Membres */}
+          {activeView !== 'dm' && (
+            <>
+              <button
+                className={`mobile-tab ${mobileView === 'channels' ? 'active' : ''}`}
+                onClick={() => setMobileView('channels')}
+                title="Canaux"
+              >
+                <span>#</span>
+                <span className="mobile-tab-label">Canaux</span>
+              </button>
+              <button
+                className={`mobile-tab ${mobileView === 'chat' ? 'active' : ''}`}
+                onClick={() => setMobileView('chat')}
+                title="Chat"
+              >
+                <span>💬</span>
+                <span className="mobile-tab-label">Chat</span>
+              </button>
+              <button
+                className={`mobile-tab ${mobileView === 'members' ? 'active' : ''}`}
+                onClick={() => setMobileView('members')}
+                title="Membres"
+              >
+                <span>👥</span>
+                <span className="mobile-tab-label">Membres</span>
+              </button>
+            </>
+          )}
+
+          {/* En DM: afficher seulement Chat et Messages */}
+          {activeView === 'dm' && (
+            <>
+              <button
+                className={`mobile-tab ${mobileView === 'chat' ? 'active' : ''}`}
+                onClick={() => setMobileView('chat')}
+                title="Chat"
+              >
+                <span>💬</span>
+                <span className="mobile-tab-label">Chat</span>
+              </button>
+              <button
+                className={`mobile-tab ${mobileView === 'dms' ? 'active' : ''}`}
+                onClick={() => setMobileView('dms')}
+                title="Messages privés"
+              >
+                <span>✉️</span>
+                <span className="mobile-tab-label">Messages</span>
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </>
   );
 }
