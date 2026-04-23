@@ -245,3 +245,68 @@
 .btn-confirm:hover {
   background: var(--accent-hover);
 }
+
+/* ── Mobile Responsive ── */
+@media (max-width: 767px) {
+  .server-sidebar {
+    width: 100%;
+    min-width: 100%;
+    flex-direction: row;
+    padding: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: 48px;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    gap: 0;
+    flex-shrink: 0;
+  }
+
+  .server-list {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    padding: 0;
+  }
+
+  .server-item {
+    height: 60px;
+    width: 60px;
+    min-width: 60px;
+    border-radius: 0;
+    margin: 0;
+  }
+
+  .server-item.home {
+    width: 60px;
+    height: 60px;
+    border-radius: 0;
+    margin: 0;
+  }
+
+  .server-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .server-icon-wrapper {
+    width: 60px;
+    height: 60px;
+  }
+
+  .server-pill {
+    display: none;
+  }
+
+  .server-dropdown {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    max-width: 100%;
+    z-index: 150;
+  }
+}

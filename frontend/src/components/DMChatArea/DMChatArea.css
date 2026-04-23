@@ -92,4 +92,136 @@
   margin-bottom: 12px;
 }
 
-/* Emoji picker DM : hérite du positionnement absolu de .emoji-picker */
+/* ── Emoji picker DM : position relative au message ── */
+.dm-emoji-picker {
+  position: fixed;
+  bottom: auto;
+  left: auto;
+}
+
+/* ── Mobile Responsive ── */
+@media (max-width: 767px) {
+  .dm-chat-area {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex: 1;
+  }
+
+  .dm-chat-header {
+    padding: 6px 10px;
+    min-height: 36px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    gap: 6px;
+  }
+
+  .dm-chat-header-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .dm-chat-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .dm-chat-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dm-chat-header-actions {
+    display: flex;
+    gap: 2px;
+  }
+
+  .dm-call-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .dm-input-wrapper {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 3px 4px 4px;
+  }
+
+  .dm-input-form {
+    padding: 2px 1px 2px 6px;
+    border-radius: 6px;
+    gap: 2px;
+    height: 36px;
+    align-items: center;
+    margin-top: auto;
+  }
+
+  .dm-attach-btn {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+  }
+
+  .dm-send-btn {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+  }
+
+  .dm-send-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .dm-input-form input {
+    font-size: 13px;
+    padding: 4px 0;
+    min-width: 0;
+  }
+}
+
+/* ── Attachments in messages ─────────────────────────────── */
+.attachments { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 8px; }
+
+.attach-image-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.attach-image {
+  max-width: 400px;
+  max-height: 300px;
+  border-radius: 8px;
+  object-fit: cover;
+  cursor: pointer;
+}
+
+.attach-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: var(--accent);
+  font-size: 14px;
+  text-decoration: none;
+  transition: background 0.1s;
+}
+
+.attach-file:hover { background: var(--hover-bg); }

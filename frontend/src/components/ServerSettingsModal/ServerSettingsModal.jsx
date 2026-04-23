@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Settings, Users, Shield, Plus, Trash2, X, Hash, Eye, EyeOff, Edit2, Check, FolderPlus } from 'lucide-react';
+import { Settings, Users, Shield, Plus, Trash2, X, Hash, Eye, EyeOff, Edit2, Check, FolderPlus, MessageSquare, SmilePlus, ChevronUp, ChevronDown, Ban } from 'lucide-react';
 import useStore from '../../store/useStore';
+import { apiFetch } from '../../api/config';
 import './ServerSettingsModal.css';
 
 export default function ServerSettingsModal({ onClose }) {
@@ -17,6 +18,9 @@ export default function ServerSettingsModal({ onClose }) {
     deleteServerRole,
     updateServerMemberRole,
     kickServerMember,
+    banServerMember,
+    unbanServerMember,
+    fetchServerBans,
     createServerInvite,
     createChannel,
     updateChannel,
@@ -25,6 +29,7 @@ export default function ServerSettingsModal({ onClose }) {
     updateChannelPermissions,
     renameCategory,
     deleteCategory,
+    reorderCategories,
   } = useStore();
 
   const [activeTab, setActiveTab] = useState('general');
@@ -49,6 +54,8 @@ export default function ServerSettingsModal({ onClose }) {
   const [channelPerms, setChannelPerms] = useState([]);
   const [renamingCategory, setRenamingCategory] = useState(null);
   const [renameCategoryValue, setRenameCategoryValue] = useState('');
+  const [categoryOrder, setCategoryOrder] = useState([]);
+  const [bans, setBans] = useState([]);
 
   const isOwner = currentServer?.owner_id === user?.id;
 
@@ -71,7 +78,14 @@ export default function ServerSettingsModal({ onClose }) {
     return groups;
   }, [channels]);
 
-  const categories = Object.keys(categorizedChannels);
+  // Sort categories by stored order
+  const categories = useMemo(() => {
+    const keys = Object.keys(categorizedChannels);
+    if (categoryOrder.length === 0) return keys;
+    const posMap = {};
+    categoryOrder.forEach((cat, i) => { posMap[cat] = i; });
+    return keys.sort((a, b) => (posMap[a] ?? 9999) - (posMap[b] ?? 9999));
+  }, [categorizedChannels, categoryOrder]);
 
   const loadRoles = async () => {
     if (!currentServer) return;
@@ -79,8 +93,18 @@ export default function ServerSettingsModal({ onClose }) {
     setRoles(data);
   };
 
+  const loadCategoryOrder = async () => {
+    if (!currentServer) return;
+    try {
+      const data = await apiFetch(`/channels/categories/${currentServer.id}`);
+      setCategoryOrder(data.categories || []);
+    } catch (e) { /* ignore */ }
+  };
+
   useEffect(() => {
     loadRoles();
+    loadCategoryOrder();
+    loadBans();
   }, [currentServer?.id]);
 
   const refreshServer = async () => {
@@ -194,6 +218,38 @@ export default function ServerSettingsModal({ onClose }) {
     }
   };
 
+  const loadBans = async () => {
+    if (!currentServer) return;
+    try {
+      const data = await fetchServerBans(currentServer.id);
+      setBans(data);
+    } catch (e) { /* ignore */ }
+  };
+
+  const handleBanMember = async (memberId) => {
+    if (!currentServer) return;
+    const reason = prompt('Raison du ban (optionnel) :');
+    try {
+      await banServerMember(currentServer.id, memberId, reason);
+      await refreshServer();
+      await loadBans();
+      showToast('success', 'Membre banni');
+    } catch (err) {
+      showToast('error', err.message);
+    }
+  };
+
+  const handleUnban = async (userId) => {
+    if (!currentServer) return;
+    try {
+      await unbanServerMember(currentServer.id, userId);
+      await loadBans();
+      showToast('success', 'Utilisateur débanni');
+    } catch (err) {
+      showToast('error', err.message);
+    }
+  };
+
   // ── Channels tab ──
   const handleCreateChannel = async () => {
     if (!newChannelName.trim()) return;
@@ -262,6 +318,7 @@ export default function ServerSettingsModal({ onClose }) {
       await renameCategory(currentServer.id, oldName, renameCategoryValue);
       setRenamingCategory(null);
       await refreshServer();
+      await loadCategoryOrder();
       showToast('success', 'Catégorie renommée');
     } catch (err) {
       showToast('error', err.message);
@@ -272,7 +329,22 @@ export default function ServerSettingsModal({ onClose }) {
     try {
       await deleteCategory(currentServer.id, catName);
       await refreshServer();
+      await loadCategoryOrder();
       showToast('success', 'Catégorie supprimée, salons déplacés vers GÉNÉRAL');
+    } catch (err) {
+      showToast('error', err.message);
+    }
+  };
+
+  const handleMoveCategory = async (catName, direction) => {
+    const idx = categories.indexOf(catName);
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= categories.length) return;
+    const newOrder = [...categories];
+    [newOrder[idx], newOrder[newIdx]] = [newOrder[newIdx], newOrder[idx]];
+    setCategoryOrder(newOrder);
+    try {
+      await reorderCategories(currentServer.id, newOrder);
     } catch (err) {
       showToast('error', err.message);
     }
@@ -293,6 +365,8 @@ export default function ServerSettingsModal({ onClose }) {
             roleName: role.name,
             roleColor: role.color,
             canView: existing ? existing.can_view === 1 : true,
+            canSend: existing ? (existing.can_send ?? 1) === 1 : true,
+            canReact: existing ? (existing.can_react ?? 1) === 1 : true,
           };
         });
       setChannelPerms(fullPerms);
@@ -301,9 +375,9 @@ export default function ServerSettingsModal({ onClose }) {
     }
   };
 
-  const handleTogglePerm = (roleId) => {
+  const handleTogglePerm = (roleId, field = 'canView') => {
     setChannelPerms(prev =>
-      prev.map(p => p.roleId === roleId ? { ...p, canView: !p.canView } : p)
+      prev.map(p => p.roleId === roleId ? { ...p, [field]: !p[field] } : p)
     );
   };
 
@@ -343,6 +417,9 @@ export default function ServerSettingsModal({ onClose }) {
             </button>
             <button className={activeTab === 'members' ? 'active' : ''} onClick={() => setActiveTab('members')}>
               <Users size={16} /> Membres
+            </button>
+            <button className={activeTab === 'bans' ? 'active' : ''} onClick={() => setActiveTab('bans')}>
+              <Ban size={16} /> Bans
             </button>
           </div>
 
@@ -450,7 +527,7 @@ export default function ServerSettingsModal({ onClose }) {
                       <h3>Permissions — #{permChannel.name}</h3>
                       <button className="perm-close" onClick={() => setPermChannel(null)}><X size={16} /></button>
                     </div>
-                    <p className="perm-hint">Le Owner voit toujours tous les salons.</p>
+                    <p className="perm-hint">Le Owner a toujours toutes les permissions.</p>
                     <div className="perm-list">
                       {channelPerms.map(p => (
                         <div key={p.roleId} className="perm-row">
@@ -458,14 +535,32 @@ export default function ServerSettingsModal({ onClose }) {
                             <span className="role-dot" style={{ background: p.roleColor }} />
                             <span>{p.roleName}</span>
                           </div>
-                          <button
-                            className={`perm-toggle ${p.canView ? 'allowed' : 'denied'}`}
-                            onClick={() => handleTogglePerm(p.roleId)}
-                            title={p.canView ? 'Visible' : 'Masqué'}
-                          >
-                            {p.canView ? <Eye size={16} /> : <EyeOff size={16} />}
-                            {p.canView ? 'Visible' : 'Masqué'}
-                          </button>
+                          <div className="perm-toggles">
+                            <button
+                              className={`perm-toggle ${p.canView ? 'allowed' : 'denied'}`}
+                              onClick={() => handleTogglePerm(p.roleId, 'canView')}
+                              title={p.canView ? 'Voir : Oui' : 'Voir : Non'}
+                            >
+                              {p.canView ? <Eye size={14} /> : <EyeOff size={14} />}
+                              Voir
+                            </button>
+                            <button
+                              className={`perm-toggle ${p.canSend ? 'allowed' : 'denied'}`}
+                              onClick={() => handleTogglePerm(p.roleId, 'canSend')}
+                              title={p.canSend ? 'Envoyer : Oui' : 'Envoyer : Non'}
+                            >
+                              <MessageSquare size={14} />
+                              Parler
+                            </button>
+                            <button
+                              className={`perm-toggle ${p.canReact ? 'allowed' : 'denied'}`}
+                              onClick={() => handleTogglePerm(p.roleId, 'canReact')}
+                              title={p.canReact ? 'Réactions : Oui' : 'Réactions : Non'}
+                            >
+                              <SmilePlus size={14} />
+                              Réagir
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -499,6 +594,20 @@ export default function ServerSettingsModal({ onClose }) {
                           <>
                             <span className="cat-name">{cat}</span>
                             <div className="cat-actions">
+                              <button
+                                title="Monter"
+                                disabled={categories.indexOf(cat) === 0}
+                                onClick={() => handleMoveCategory(cat, -1)}
+                              >
+                                <ChevronUp size={13} />
+                              </button>
+                              <button
+                                title="Descendre"
+                                disabled={categories.indexOf(cat) === categories.length - 1}
+                                onClick={() => handleMoveCategory(cat, 1)}
+                              >
+                                <ChevronDown size={13} />
+                              </button>
                               <button
                                 title="Renommer"
                                 onClick={() => { setRenamingCategory(cat); setRenameCategoryValue(cat); }}
@@ -650,11 +759,49 @@ export default function ServerSettingsModal({ onClose }) {
                           >
                             Expulser
                           </button>
+                          <button
+                            type="button"
+                            className="danger"
+                            onClick={() => handleBanMember(member.id)}
+                          >
+                            Bannir
+                          </button>
                         </div>
                       )}
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* ── BANS ── */}
+            {activeTab === 'bans' && (
+              <div className="settings-section">
+                <h3>Utilisateurs bannis ({bans.length})</h3>
+                {bans.length === 0 ? (
+                  <p style={{ color: '#888', fontSize: 13 }}>Aucun utilisateur banni.</p>
+                ) : (
+                  <div className="members-list">
+                    {bans.map((ban) => (
+                      <div key={ban.user_id} className="member-row">
+                        <div className="member-left">
+                          <div className="member-avatar">{ban.username?.charAt(0).toUpperCase()}</div>
+                          <div className="member-meta">
+                            <strong>{ban.username}</strong>
+                            <span style={{ color: '#ff8f92', fontSize: 12 }}>
+                              {ban.reason || 'Aucune raison'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="member-actions">
+                          <button type="button" className="btn-primary" onClick={() => handleUnban(ban.user_id)}>
+                            Débannir
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

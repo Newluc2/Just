@@ -6,6 +6,8 @@
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
 }
 
 .server-settings-header {
@@ -33,6 +35,8 @@
   display: grid;
   grid-template-columns: 220px 1fr;
   min-height: 520px;
+  flex: 1;
+  overflow: hidden;
 }
 
 .server-settings-tabs {
@@ -64,7 +68,8 @@
 
 .server-settings-content {
   padding: 16px;
-  overflow: auto;
+  overflow-y: auto;
+  max-height: 100%;
 }
 
 .settings-section label {
@@ -319,6 +324,17 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
+.cat-actions button:disabled {
+  opacity: 0.3;
+  cursor: default;
+  color: #555;
+}
+
+.cat-actions button:disabled:hover {
+  background: none;
+  color: #555;
+}
+
 .danger-sm {
   color: #ff8f92 !important;
 }
@@ -462,6 +478,11 @@
   padding: 6px 8px;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 6px;
+}
+
+.perm-toggles {
+  display: flex;
+  gap: 6px;
 }
 
 .perm-role {

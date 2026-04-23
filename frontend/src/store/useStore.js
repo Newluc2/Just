@@ -20,10 +20,10 @@ const useStore = create((set, get) => ({
   /**
    * Inscription d'un nouvel utilisateur
    */
-  register: async (username, email, password) => {
+  register: async (username, email, password, displayName = null) => {
     const data = await apiFetch('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({ username, email, password, display_name: displayName }),
     });
     localStorage.setItem('just_token', data.token);
     set({ user: data.user, token: data.token, isAuthenticated: true });
@@ -57,12 +57,13 @@ const useStore = create((set, get) => ({
       currentServer: null,
       channels: [],
       currentChannel: null,
+      channelPermissions: null,
       messages: [],
       members: [],
       dmConversations: [],
       currentDM: null,
       dmMessages: [],
-      activeView: 'servers',
+      activeView: 'dm',
     });
   },
 
@@ -119,6 +120,12 @@ const useStore = create((set, get) => ({
       dmMessages: [],
       activeView: 'servers',
     });
+
+    // Fetch category order
+    try {
+      const catData = await apiFetch(`/channels/categories/${serverId}`);
+      set({ categoryOrder: catData.categories || [] });
+    } catch (e) { /* ignore */ }
 
     // Rejoindre la room Socket.io du serveur
     if (socket) {
@@ -228,6 +235,24 @@ const useStore = create((set, get) => ({
     });
   },
 
+  banServerMember: async (serverId, userId, reason) => {
+    await apiFetch(`/servers/${serverId}/bans/${userId}`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason || null }),
+    });
+  },
+
+  unbanServerMember: async (serverId, userId) => {
+    await apiFetch(`/servers/${serverId}/bans/${userId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  fetchServerBans: async (serverId) => {
+    const data = await apiFetch(`/servers/${serverId}/bans`);
+    return data.bans || [];
+  },
+
   leaveServer: async (serverId) => {
     await apiFetch(`/servers/${serverId}/members/leave`, {
       method: 'DELETE',
@@ -267,6 +292,8 @@ const useStore = create((set, get) => ({
   // ===== SALONS =====
   channels: [],
   currentChannel: null,
+  channelPermissions: null,
+  categoryOrder: [],
 
   /**
    * Sélectionner un salon et charger les messages
@@ -282,11 +309,14 @@ const useStore = create((set, get) => ({
       socket.emit('channel:leave', oldChannel.id);
     }
 
-    set({ currentChannel: channel, messages: [] });
+    set({ currentChannel: channel, messages: [], channelPermissions: null });
 
-    // Charger les messages
-    const data = await apiFetch(`/messages/${channelId}`);
-    set({ messages: data.messages });
+    // Charger les messages et les permissions en parallèle
+    const [messagesData, permsData] = await Promise.all([
+      apiFetch(`/messages/${channelId}`),
+      apiFetch(`/channels/${channelId}/my-permissions`).catch(() => ({ canView: true, canSend: true, canReact: true })),
+    ]);
+    set({ messages: messagesData.messages, channelPermissions: permsData });
 
     // Rejoindre le nouveau salon Socket.io
     if (socket) {
@@ -379,6 +409,16 @@ const useStore = create((set, get) => ({
     await apiFetch(`/channels/categories/${serverId}`, {
       method: 'DELETE',
       body: JSON.stringify({ category }),
+    });
+  },
+
+  /**
+   * Réordonner les catégories
+   */
+  reorderCategories: async (serverId, categories) => {
+    await apiFetch(`/channels/categories/${serverId}/reorder`, {
+      method: 'PUT',
+      body: JSON.stringify({ categories }),
     });
   },
 
@@ -514,7 +554,7 @@ const useStore = create((set, get) => ({
   },
 
   // ===== VIEW MODE =====
-  activeView: 'servers', // 'servers' | 'dm'
+  activeView: 'dm', // 'servers' | 'dm'
 
   setActiveView: (view) => {
     set({ activeView: view });
@@ -619,6 +659,7 @@ const useStore = create((set, get) => ({
 
     const socket = getSocket();
     if (socket) {
+      console.log('📤 Sending DM:', { conversationId: dm.id, hasContent: !!content?.trim(), attachmentCount: options.attachments?.length || 0 });
       socket.emit('dm:send', {
         conversationId: dm.id,
         recipientId: dm.other_user_id,
@@ -634,6 +675,7 @@ const useStore = create((set, get) => ({
    */
   addDMMessage: (conversationId, message) => {
     const state = get();
+    console.log('📨 Received DM message:', { conversationId, messageId: message.id, hasAttachments: !!message.attachments?.length, currentDMId: state.currentDM?.id });
     if (state.currentDM?.id === conversationId) {
       if (state.dmMessages.some((m) => m.id === message.id)) return;
       set({ dmMessages: [...state.dmMessages, message] });

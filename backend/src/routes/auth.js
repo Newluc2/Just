@@ -13,6 +13,7 @@ const fs = require('fs');
 const multer = require('multer');
 const db = require('../database/db');
 const authMiddleware = require('../middleware/auth');
+const { getClientIp, logAccess } = require('../middleware/ipBan');
 
 const router = express.Router();
 
@@ -44,7 +45,7 @@ const avatarUpload = multer({
  */
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, display_name: displayName } = req.body;
 
     // Validation des champs
     if (!username || !email || !password) {
@@ -70,8 +71,8 @@ router.post('/register', async (req, res) => {
     const userId = uuidv4();
 
     // Insérer l'utilisateur en base
-    db.run('INSERT INTO users (id, username, email, password) VALUES (?, ?, ?, ?)',
-      [userId, username, email, hashedPassword]);
+    db.run('INSERT INTO users (id, username, email, password, display_name) VALUES (?, ?, ?, ?, ?)',
+      [userId, username, email, hashedPassword, displayName?.trim() || null]);
 
     // Générer un token JWT
     const token = jwt.sign(
@@ -108,6 +109,11 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     }
 
+    const globalBan = db.get('SELECT user_id FROM admin_bans WHERE user_id = ?', [user.id]);
+    if (globalBan) {
+      return res.status(403).json({ error: 'Votre compte a été banni par un administrateur.' });
+    }
+
     // Vérifier le mot de passe
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -120,6 +126,10 @@ router.post('/login', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    const clientIp = getClientIp(req);
+    db.run('UPDATE users SET last_ip = ? WHERE id = ?', [clientIp, user.id]);
+    logAccess(clientIp, 'login_success', 'POST /api/auth/login', user.id, false);
 
     res.json({
       token,
@@ -164,23 +174,24 @@ router.get('/me', authMiddleware, (req, res) => {
  */
 router.put('/profile', authMiddleware, async (req, res) => {
   try {
-    const { username, email, currentPassword, newPassword } = req.body;
+    const { username, email, currentPassword, newPassword, display_name: displayName } = req.body;
     const userId = req.user.id;
+
+    const user = db.get('SELECT * FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
 
     // Changement de mot de passe
     if (currentPassword && newPassword) {
-      const bcrypt = require('bcryptjs');
-      const user = db.get('SELECT * FROM users WHERE id = ?', [userId]);
-      const valid = await bcrypt.compare(currentPassword, user.password_hash);
+      const valid = await bcrypt.compare(currentPassword, user.password);
       if (!valid) {
         return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
       }
       const hash = await bcrypt.hash(newPassword, 10);
-      db.run('UPDATE users SET password_hash = ? WHERE id = ?', [hash, userId]);
+      db.run('UPDATE users SET password = ? WHERE id = ?', [hash, userId]);
       return res.json({ message: 'Mot de passe modifié' });
     }
-
-    const { display_name: displayName } = req.body;
 
     // Mise à jour du profil
     if (username) {
@@ -191,10 +202,36 @@ router.put('/profile', authMiddleware, async (req, res) => {
       }
     }
 
-    db.run(
-      'UPDATE users SET username = COALESCE(?, username), email = COALESCE(?, email), display_name = COALESCE(?, display_name) WHERE id = ?',
-      [username || null, email || null, displayName !== undefined ? (displayName || null) : undefined, userId]
-    );
+    if (email) {
+      const existingEmail = db.get('SELECT id FROM users WHERE email = ? AND id != ?', [email, userId]);
+      if (existingEmail) {
+        return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+      }
+    }
+
+    const updates = [];
+    const params = [];
+
+    if (username !== undefined) {
+      updates.push('username = ?');
+      params.push((username || '').trim() || user.username);
+    }
+    if (email !== undefined) {
+      updates.push('email = ?');
+      params.push((email || '').trim() || user.email);
+    }
+    if (displayName !== undefined) {
+      updates.push('display_name = ?');
+      params.push((displayName || '').trim() || null);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'Aucune modification fournie' });
+    }
+
+    params.push(userId);
+
+    db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
 
     const updated = db.get(
       'SELECT id, username, email, avatar, display_name, status, created_at FROM users WHERE id = ?',

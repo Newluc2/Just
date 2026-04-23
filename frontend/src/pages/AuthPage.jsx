@@ -11,6 +11,7 @@ import './AuthPage.css';
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -27,7 +28,7 @@ export default function AuthPage() {
       if (isLogin) {
         await login(email, password);
       } else {
-        await register(username, email, password);
+        await register(username, email, password, displayName || null);
       }
     } catch (err) {
       setError(err.message);
@@ -70,16 +71,28 @@ export default function AuthPage() {
 
           <form onSubmit={handleSubmit}>
             {!isLogin && (
-              <div className="form-group">
-                <label>Nom d'utilisateur</label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="MonPseudo"
-                  required={!isLogin}
-                />
-              </div>
+              <>
+                <div className="form-group">
+                  <label>Nom d'utilisateur (unique)</label>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="MonPseudoUnique"
+                    required={!isLogin}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Nom d'affichage (public)</label>
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="Mon Nom Public"
+                  />
+                </div>
+              </>
             )}
 
             <div className="form-group">

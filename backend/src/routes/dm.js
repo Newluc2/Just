@@ -117,6 +117,8 @@ function enrichDMMessage(msg) {
     reactionsMap[r.emoji].users.push(r.user_id);
   }
   msg.reactions = Object.values(reactionsMap);
+  // Attachments (images, fichiers, etc.)
+  msg.attachments = db.all(`SELECT * FROM message_attachments WHERE message_id = ?`, [msg.id]);
   // Message cité
   msg.replied_message = null;
   if (msg.reply_to) {
