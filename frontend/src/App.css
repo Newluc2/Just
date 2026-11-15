@@ -32,9 +32,9 @@ body {
 @media (max-width: 767px) {
   .app-layout {
     flex-direction: column;
-    height: 100vh;
+    height: 100dvh;
     overflow: hidden;
-    padding-bottom: 50px;
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
   }
 }
 
@@ -113,7 +113,7 @@ body {
 @media (max-width: 767px) {
   .app-layout {
     flex-direction: column;
-    padding-bottom: 50px;
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
   }
 
   /* ServerSidebar reste visible mais ajusté */
@@ -164,6 +164,12 @@ body {
     flex-direction: column;
     overflow: hidden;
     min-height: 0;
+  }
+
+  .mobile-sidebar-overlay {
+    top: 48px;
+    bottom: calc(56px + env(safe-area-inset-bottom));
+    max-height: none;
   }
 
   .dm-chat-area {
@@ -569,7 +575,7 @@ body {
   top: 48px;
   left: 0;
   right: 0;
-  bottom: 50px;
+  bottom: calc(56px + env(safe-area-inset-bottom));
   background: var(--bg-secondary);
   z-index: 100;
   overflow-y: auto;
@@ -583,8 +589,8 @@ body {
 @media (max-width: 767px) {
   .mobile-sidebar-overlay {
     top: 48px;
-    bottom: 50px;
-    max-height: calc(100vh - 48px - 50px);
+    bottom: calc(56px + env(safe-area-inset-bottom));
+    max-height: none;
   }
 }
 
@@ -614,7 +620,7 @@ body {
 }
 
 .mobile-sidebar-overlay .channel-header,
-.mobile-sidebar-overlay .dm-header {
+.mobile-sidebar-overlay .dm-sidebar-header {
   display: flex !important;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
@@ -640,13 +646,32 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 50px;
+  height: calc(56px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
   background: var(--bg-secondary);
   border-top: 1px solid var(--border);
   display: flex;
   justify-content: space-around;
   align-items: center;
   z-index: 150;
+}
+
+@media (max-width: 767px) {
+  .mobile-sidebar-overlay .dm-sidebar-header {
+    min-height: 52px;
+    padding: 12px 16px;
+  }
+
+  .mobile-sidebar-overlay .dm-search-bar {
+    margin: 8px 12px;
+  }
+
+  .mobile-sidebar-overlay .dm-item,
+  .mobile-sidebar-overlay .dm-search-result-item {
+    min-height: 56px;
+    padding: 10px 14px;
+    margin: 2px 8px;
+  }
 }
 
 .mobile-tab {
