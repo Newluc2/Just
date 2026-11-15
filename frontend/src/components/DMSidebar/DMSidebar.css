@@ -253,7 +253,7 @@
     flex-direction: column;
   }
 
-  .dm-header {
+  .dm-sidebar-header {
     padding: 14px 16px;
     background: linear-gradient(180deg, var(--bg-secondary) 0%, rgba(0,0,0,0.1) 100%);
     border-bottom: 2px solid var(--border);
@@ -262,9 +262,8 @@
     z-index: 10;
   }
 
-  .dm-header h3 {
-    font-size: 15px;
-    font-weight: 600;
+  .dm-sidebar-title {
+    font-size: 12px;
   }
 
   .dm-new-btn {
@@ -278,28 +277,28 @@
     overflow-y: auto;
   }
 
-  .dm-conversation-item {
+  .dm-item {
     padding: 8px 12px;
     margin: 2px 8px;
     border-radius: 6px;
     transition: all 0.2s;
   }
 
-  .dm-conversation-item:hover {
+  .dm-item:hover {
     background: rgba(255, 255, 255, 0.08);
   }
 
-  .dm-conversation-item.active {
+  .dm-item.active {
     background: var(--accent);
     color: white;
   }
 
-  .dm-username {
+  .dm-item-name {
     font-size: 14px;
     font-weight: 500;
   }
 
-  .dm-preview {
+  .dm-item-preview {
     font-size: 12px;
     color: var(--text-muted);
   }
